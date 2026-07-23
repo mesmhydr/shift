@@ -129,12 +129,28 @@ async function notifySupervisors(title, body, meta = {}) {
 
 async function computeEmployeeStatus(employeeId, areaId, date) {
   const db = await getDb();
+  // Consider ALL sessions for this employee today (any area) so switching areas
+  // doesn't allow duplicate breaks.
   const sessions = await db.collection('break_sessions')
-    .find({ employeeId, areaId, date })
+    .find({ employeeId, date })
     .toArray();
 
-  const lunch = sessions.find(s => s.type === 'lunch');
-  const tea = sessions.find(s => s.type === 'tea');
+  // Pick the "authoritative" session per type: prefer non-rejected; among those,
+  // prefer active states over completed.
+  const pickForType = (type) => {
+    const list = sessions.filter(s => s.type === type);
+    if (list.length === 0) return null;
+    const nonRejected = list.filter(s => s.status !== 'rejected');
+    if (nonRejected.length > 0) {
+      const prio = { active: 0, pending: 1, pending_return: 2, completed: 3 };
+      nonRejected.sort((a, b) => (prio[a.status] ?? 99) - (prio[b.status] ?? 99));
+      return nonRejected[0];
+    }
+    return null; // all rejected => treat as not taken
+  };
+
+  const lunch = pickForType('lunch');
+  const tea = pickForType('tea');
 
   const active = sessions.find(s => ['pending', 'active', 'pending_return'].includes(s.status));
 
@@ -254,7 +270,7 @@ async function handle(request, params, method) {
     const areas = await db.collection('areas').find({}).toArray();
     return json({ areas: areas.map(a => ({ id: a.id, name: a.name })) });
   }
-  if (p0 === 'areas' && method === 'POST') {
+  if (p0 === 'areas' && !p1 && method === 'POST') {
     if (me.role !== 'supervisor') return json({ error: 'Forbidden' }, 403);
     const id = uuidv4();
     await db.collection('areas').insertOne({ id, name: body.name || 'New Area', createdAt: new Date() });
@@ -283,7 +299,7 @@ async function handle(request, params, method) {
       })),
     });
   }
-  if (p0 === 'employees' && method === 'POST') {
+  if (p0 === 'employees' && !p1 && method === 'POST') {
     if (me.role !== 'supervisor') return json({ error: 'Forbidden' }, 403);
     const { name, email, password, phone, department, employeeRole } = body;
     if (!name || !email || !password) return json({ error: 'Name, email, password required' }, 400);
@@ -369,7 +385,7 @@ async function handle(request, params, method) {
       },
     });
   }
-  if (p0 === 'rosters' && method === 'POST') {
+  if (p0 === 'rosters' && !p1 && method === 'POST') {
     if (me.role !== 'supervisor') return json({ error: 'Forbidden' }, 403);
     const { areaId, date, employeeIds } = body;
     if (!areaId || !date || !Array.isArray(employeeIds)) return json({ error: 'Invalid' }, 400);
@@ -459,11 +475,11 @@ async function handle(request, params, method) {
     const roster = await db.collection('rosters').findOne({ date, employeeIds: me.id });
     if (!roster) return json({ error: 'You are not on today\'s roster' }, 400);
     const areaId = roster.areaId;
-    // Check existing
-    const existing = await db.collection('break_sessions').findOne({ employeeId: me.id, areaId, date, type });
-    if (existing && existing.status !== 'rejected') return json({ error: `${type} already used` }, 400);
-    // Active break in progress
-    const active = await db.collection('break_sessions').findOne({ employeeId: me.id, areaId, date, status: { $in: ['pending', 'active', 'pending_return'] } });
+    // Check existing (any area today) - block if any non-rejected same-type session exists
+    const existing = await db.collection('break_sessions').findOne({ employeeId: me.id, date, type, status: { $ne: 'rejected' } });
+    if (existing) return json({ error: `${type} already used` }, 400);
+    // Active break in progress (any type, any area)
+    const active = await db.collection('break_sessions').findOne({ employeeId: me.id, date, status: { $in: ['pending', 'active', 'pending_return'] } });
     if (active) return json({ error: 'You already have an active break' }, 400);
     const settings = await getSettings();
     const id = uuidv4();
@@ -494,9 +510,9 @@ async function handle(request, params, method) {
     const roster = await db.collection('rosters').findOne({ date, employeeIds: employeeId });
     if (!roster) return json({ error: 'Employee not on roster' }, 400);
     const areaId = roster.areaId;
-    const existing = await db.collection('break_sessions').findOne({ employeeId, areaId, date, type });
-    if (existing && existing.status !== 'rejected') return json({ error: `${type} already used` }, 400);
-    const active = await db.collection('break_sessions').findOne({ employeeId, areaId, date, status: { $in: ['pending', 'active', 'pending_return'] } });
+    const existing = await db.collection('break_sessions').findOne({ employeeId, date, type, status: { $ne: 'rejected' } });
+    if (existing) return json({ error: `${type} already used` }, 400);
+    const active = await db.collection('break_sessions').findOne({ employeeId, date, status: { $in: ['pending', 'active', 'pending_return'] } });
     if (active) return json({ error: 'Employee already on a break' }, 400);
     const id = uuidv4();
     const now = new Date();
@@ -541,8 +557,9 @@ async function handle(request, params, method) {
   // Employee return
   if (p0 === 'breaks' && p1 === 'return' && method === 'POST') {
     const date = todayStr();
-    const active = await db.collection('break_sessions').findOne({ employeeId: me.id, date, status: 'active' });
+    const active = await db.collection('break_sessions').findOne({ employeeId: me.id, date, status: { $in: ['active', 'pending_return'] } });
     if (!active) return json({ error: 'No active break' }, 400);
+    if (active.status === 'pending_return') return json({ error: 'Return already requested' }, 400);
     const settings = await getSettings();
     if (settings.requireBreakReturnApproval) {
       await db.collection('break_sessions').updateOne({ id: active.id }, { $set: { status: 'pending_return' } });
@@ -593,6 +610,18 @@ async function handle(request, params, method) {
         exceeded: s.durationMin > BREAK_DURATIONS[s.type],
       })),
     });
+  }
+
+  // Delete history (all completed breaks for area+date, or all for area)
+  if (p0 === 'history' && method === 'DELETE') {
+    if (me.role !== 'supervisor') return json({ error: 'Forbidden' }, 403);
+    const settings = await getSettings();
+    const areaId = q.areaId || settings.currentAreaId;
+    const filter = { areaId, status: 'completed' };
+    if (q.date) filter.date = q.date;
+    if (q.all !== '1' && !q.date) return json({ error: 'Specify date or all=1' }, 400);
+    const r = await db.collection('break_sessions').deleteMany(filter);
+    return json({ deleted: r.deletedCount });
   }
 
   // ---------- NOTIFICATIONS ----------

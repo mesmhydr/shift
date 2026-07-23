@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { api, setToken } from '@/lib/shiftops-client';
+import { fx, ensureNotifPermission } from '@/lib/shiftops-fx';
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('admin@shiftops.io');
@@ -14,14 +15,19 @@ export default function Login({ onLogin }) {
     e.preventDefault();
     setError('');
     setLoading(true);
+    fx.tap();
     try {
       const { token } = await api('/auth/login', {
         method: 'POST',
         body: { email: email.trim(), password },
       });
       setToken(token);
+      fx.success();
+      // Prompt for notification permission on successful login (user gesture)
+      ensureNotifPermission();
       await onLogin();
     } catch (err) {
+      fx.error();
       setError(err.message || 'Login failed');
     } finally {
       setLoading(false);

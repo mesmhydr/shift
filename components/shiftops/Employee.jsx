@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/shiftops-client';
+import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
 import { BottomNav } from '@/components/shiftops/Supervisor';
-import { Home as HomeIcon, Bell, User, Coffee, UtensilsCrossed, LogOut, KeyRound, Check } from 'lucide-react';
+import { Home as HomeIcon, Bell, User, Coffee, UtensilsCrossed, LogOut, KeyRound, Check, Vibrate, Volume2 } from 'lucide-react';
 
 const C = {
   bg: '#F5F5F7', text: '#1D1D1F', muted: '#8E8E93', sep: 'rgba(0,0,0,0.06)',
@@ -39,7 +40,7 @@ function HomeTab({ user }) {
     return () => clearInterval(i);
   }, []);
 
-  const act = async (fn) => { try { await fn(); await load(); } catch (e) { alert(e.message); } };
+  const act = async (fn) => { fx.tap(); try { await fn(); fx.success(); await load(); } catch (e) { fx.error(); alert(e.message); } };
 
   if (loading) return <div className="p-6 text-[#8E8E93]">Loading…</div>;
 
@@ -206,6 +207,9 @@ function NotificationsTab() {
 function ProfileTab({ user, onLogout, refreshUser }) {
   const [showChange, setShowChange] = useState(false);
   const [cur, setCur] = useState(''); const [np, setNp] = useState(''); const [busy, setBusy] = useState(false);
+  const [hap, setHap] = useState(true);
+  const [snd, setSnd] = useState(true);
+  useEffect(() => { setHap(getHaptics()); setSnd(getSounds()); }, []);
 
   const changePw = async () => {
     setBusy(true);
@@ -242,6 +246,35 @@ function ProfileTab({ user, onLogout, refreshUser }) {
         <InfoRow label="Department" value={user.department} first />
         <InfoRow label="Email" value={user.email} />
         <InfoRow label="Phone" value={user.phone} />
+      </div>
+
+      <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Preferences</div>
+      <div className="mx-4 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+        <div className="px-4 py-3.5 flex items-center gap-3">
+          <Vibrate size={18} className="text-[#8E8E93]" />
+          <div className="flex-1 text-[16px] text-[#1D1D1F]">Haptic Vibration</div>
+          <button onClick={() => { const n = !hap; setHap(n); setHaptics(n); if (n) fx.success(); }}
+            className="w-[51px] h-[31px] rounded-full relative transition"
+            style={{ background: hap ? C.green : '#E5E5EA' }}>
+            <span className="absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full transition shadow"
+              style={{ transform: hap ? 'translateX(20px)' : 'translateX(0)' }} />
+          </button>
+        </div>
+        <div className="px-4 py-3.5 flex items-center gap-3" style={{ borderTop: `1px solid ${C.sep}` }}>
+          <Volume2 size={18} className="text-[#8E8E93]" />
+          <div className="flex-1 text-[16px] text-[#1D1D1F]">Sound Effects</div>
+          <button onClick={() => { const n = !snd; setSnd(n); setSounds(n); if (n) fx.success(); }}
+            className="w-[51px] h-[31px] rounded-full relative transition"
+            style={{ background: snd ? C.green : '#E5E5EA' }}>
+            <span className="absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full transition shadow"
+              style={{ transform: snd ? 'translateX(20px)' : 'translateX(0)' }} />
+          </button>
+        </div>
+        <button onClick={async () => { const p = await ensureNotifPermission(); alert('Browser notifications: ' + p); }}
+          className="w-full px-4 py-3.5 flex items-center gap-3 active:bg-black/5" style={{ borderTop: `1px solid ${C.sep}` }}>
+          <Bell size={18} className="text-[#007AFF]" />
+          <span className="text-[16px] text-[#007AFF]">Enable Browser Notifications</span>
+        </button>
       </div>
 
       <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Security</div>

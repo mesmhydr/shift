@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/shiftops-client';
+import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
 import {
   LayoutDashboard, CalendarDays, History, Settings as SettingsIcon,
   Coffee, UtensilsCrossed, Check, X, Clock, ChevronRight, Plus, Trash2, Pencil, LogOut, KeyRound, ArrowLeft, ChevronLeft,
+  Bell, Vibrate, Volume2, Eraser,
 } from 'lucide-react';
 
 const C = {
@@ -168,7 +170,7 @@ function DashboardTab({ areaName }) {
     return () => clearInterval(i);
   }, []);
 
-  const act = async (fn) => { try { await fn(); await load(); } catch (e) { alert(e.message); } };
+  const act = async (fn) => { fx.tap(); try { await fn(); fx.success(); await load(); } catch (e) { fx.error(); alert(e.message); } };
 
   if (loading && !data) return <div className="p-6 text-[#8E8E93]">Loading…</div>;
 
@@ -410,6 +412,7 @@ function RosterSheet({ date, areaId, onClose }) {
   };
 
   const save = async () => {
+    if (loading) return; // guard: don't save empty over unloaded roster
     setSaving(true);
     try {
       await api('/rosters', { method: 'POST', body: { areaId, date, employeeIds: Array.from(selected) } });
@@ -424,8 +427,8 @@ function RosterSheet({ date, areaId, onClose }) {
         <div className="p-4 flex items-center justify-between border-b" style={{ borderColor: C.sep }}>
           <button onClick={onClose} className="text-[17px] text-[#007AFF]">Cancel</button>
           <div className="text-[17px] font-semibold text-[#1D1D1F]">{fmtDateFull(date)}</div>
-          <button onClick={save} disabled={saving} className="text-[17px] font-semibold text-[#007AFF] disabled:opacity-50">
-            {saving ? 'Saving…' : 'Save'}
+          <button onClick={save} disabled={saving || loading} className="text-[17px] font-semibold text-[#007AFF] disabled:opacity-50">
+            {saving ? 'Saving…' : (loading ? 'Loading…' : 'Save')}
           </button>
         </div>
         <div className="px-5 pt-3 pb-1 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">
@@ -518,6 +521,10 @@ function SettingsTab({ user, onLogout, refreshArea }) {
   const [editingEmp, setEditingEmp] = useState(null);
   const [showAddEmp, setShowAddEmp] = useState(false);
   const [showAreas, setShowAreas] = useState(false);
+  const [hap, setHap] = useState(true);
+  const [snd, setSnd] = useState(true);
+
+  useEffect(() => { setHap(getHaptics()); setSnd(getSounds()); }, []);
 
   const loadAll = async () => {
     const [s, e, a, pr] = await Promise.all([
@@ -605,11 +612,47 @@ function SettingsTab({ user, onLogout, refreshArea }) {
         </Row>
       </Section>
 
+      <Section header="Feedback">
+        <ToggleRow label="Haptic Vibration" value={hap} onChange={() => { const n = !hap; setHap(n); setHaptics(n); if (n) fx.success(); }} />
+        <ToggleRow label="Sound Effects" value={snd} onChange={() => { const n = !snd; setSnd(n); setSounds(n); if (n) fx.success(); }} />
+        <Row onClick={async () => { const p = await ensureNotifPermission(); alert('Browser notifications: ' + p); }}>
+          <Bell size={18} className="text-[#007AFF]" />
+          <div className="flex-1 text-[16px] text-[#007AFF]">Enable Browser Notifications</div>
+        </Row>
+      </Section>
+
       <Section header="Notifications">
         <ToggleRow label="Push Notifications" value={settings.pushNotifications ?? true} onChange={() => toggle('pushNotifications')} />
         <ToggleRow label="Break Reminders" value={settings.breakReminder ?? true} onChange={() => toggle('breakReminder')} />
         <ToggleRow label="Approval Notifications" value={settings.approvalNotifications ?? true} onChange={() => toggle('approvalNotifications')} />
         <ToggleRow label="Password Requests" value={settings.passwordRequests ?? true} onChange={() => toggle('passwordRequests')} />
+      </Section>
+
+      <Section header="History">
+        <Row onClick={async () => {
+          if (!confirm("Clear today's history? Completed breaks will be permanently deleted.")) return;
+          try {
+            const t = new Date();
+            const d = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+            const r = await api(`/history?date=${d}`, { method: 'DELETE' });
+            fx.success();
+            alert(`Deleted ${r.deleted} records`);
+          } catch (e) { fx.error(); alert(e.message); }
+        }}>
+          <Eraser size={18} className="text-[#FF3B30]" />
+          <div className="flex-1 text-[16px] text-[#FF3B30]">Clear Today's History</div>
+        </Row>
+        <Row onClick={async () => {
+          if (!confirm('Clear ALL history for this area? This cannot be undone.')) return;
+          try {
+            const r = await api(`/history?all=1`, { method: 'DELETE' });
+            fx.success();
+            alert(`Deleted ${r.deleted} records`);
+          } catch (e) { fx.error(); alert(e.message); }
+        }}>
+          <Trash2 size={18} className="text-[#FF3B30]" />
+          <div className="flex-1 text-[16px] text-[#FF3B30]">Clear All History (Area)</div>
+        </Row>
       </Section>
 
       <Section header="Organization">
@@ -855,7 +898,7 @@ export function BottomNav({ tab, setTab, items }) {
           const Icon = it.icon;
           const active = tab === it.key;
           return (
-            <button key={it.key} onClick={() => setTab(it.key)}
+            <button key={it.key} onClick={() => { fx.tap(); setTab(it.key); }}
               className="flex-1 py-2 flex flex-col items-center gap-0.5 active:opacity-60 transition">
               <Icon size={24} color={active ? C.blue : C.muted} strokeWidth={active ? 2.4 : 2} />
               <span className="text-[10px] font-medium" style={{ color: active ? C.blue : C.muted }}>{it.label}</span>
