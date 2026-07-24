@@ -5,8 +5,8 @@ import { api, setToken } from '@/lib/shiftops-client';
 import { fx, ensureNotifPermission } from '@/lib/shiftops-fx';
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin@shiftops.io');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showReset, setShowReset] = useState(false);
@@ -99,15 +99,6 @@ export default function Login({ onLogin }) {
             Contact your supervisor to reset your password. Or sign in and request a reset from your profile.
           </div>
         )}
-
-        <div className="mt-8 p-4 bg-white rounded-2xl">
-          <p className="text-[13px] font-semibold text-[#1D1D1F] mb-2">Demo credentials</p>
-          <div className="text-[13px] text-[#8E8E93] space-y-1">
-            <div><span className="text-[#1D1D1F]">Supervisor:</span> admin@shiftops.io / admin123</div>
-            <div><span className="text-[#1D1D1F]">Employee:</span> sarah@shiftops.io / emp123</div>
-            <div className="text-[12px] mt-2">Also: john, michael, david, emma @shiftops.io / emp123</div>
-          </div>
-        </div>
       </div>
     </div>
   );

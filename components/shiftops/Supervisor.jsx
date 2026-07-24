@@ -1,5 +1,5 @@
 'use client';
-
+import Image from "next/image";
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/shiftops-client';
 import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
@@ -172,8 +172,50 @@ function DashboardTab({ areaName }) {
 
   const act = async (fn) => { fx.tap(); try { await fn(); fx.success(); await load(); } catch (e) { fx.error(); alert(e.message); } };
 
-  if (loading && !data) return <div className="p-6 text-[#8E8E93]">Loading…</div>;
+  if (loading && !data) {
+  return (
+    <div className="flex h-[calc(100vh-80px)] flex-col items-center justify-center bg-[#F5F5F7]">
+      {/* Logo */}
+      <div
+        className="mb-5 flex h-20 w-20 animate-pulse items-center justify-center rounded-3xl bg-white shadow-sm"
+      >
+        <Image
+  src="/icon.svg"
+  alt="ShiftOps"
+  width={48}
+  height={48}
+  priority
+/>
+      </div>
 
+      {/* App Name */}
+      <h1 className="text-[30px] font-bold tracking-tight text-[#1D1D1F]">
+        ShiftOps
+      </h1>
+
+      {/* Subtitle */}
+      <p className="mt-2 text-[15px] text-[#8E8E93]">
+        Preparing things for you...
+      </p>
+
+      {/* Animated dots */}
+      <div className="mt-8 flex gap-2">
+        <span
+          className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
+          style={{ animationDelay: "0ms" }}
+        />
+        <span
+          className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
+          style={{ animationDelay: "15ms" }}
+        />
+        <span
+          className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
+          style={{ animationDelay: "30ms" }}
+        />
+      </div>
+    </div>
+  );
+}
   const s = data?.summary || {};
 
   return (
