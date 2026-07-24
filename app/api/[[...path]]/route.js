@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '@/lib/shiftops/db';
 import { hashPassword, verifyPassword, newToken, getUserFromRequest } from '@/lib/shiftops/auth';
+import { todayStr } from "@/lib/date";
+import { londonNow } from "@/lib/date";
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,11 +14,6 @@ function json(data, status = 200) {
   return NextResponse.json(data, { status });
 }
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 async function ensureSeed() {
   const db = await getDb();
   const existing = await db.collection('users').findOne({ role: 'supervisor' });
@@ -25,7 +22,7 @@ async function ensureSeed() {
   const areaId = uuidv4();
   await db.collection('areas').insertOne({ id: areaId, name: 'Lobby', createdAt: new Date() });
 
-  const supervisorId = uuidv4();
+  const supgetFullYearervisorId = uuidv4();
   await db.collection('users').insertOne({
     id: supervisorId,
     email: 'admin@shiftops.io',
@@ -409,8 +406,31 @@ async function handle(request, params, method) {
     const settings = await getSettings();
     const areaId = q.areaId || settings.currentAreaId;
     const date = q.date || todayStr();
+
+    
+const roster = await db.collection("rosters").findOne({ areaId, date });
+
+console.log({
+  requestedDate: date,
+  areaId,
+  rosterFound: !!roster,
+  rosterDate: roster?.date,
+  employeeCount: roster?.employeeIds?.length,
+});
+
+const allRosters = await db
+  .collection("rosters")
+  .find({ areaId })
+  .toArray();
+
+console.log(
+  "All rosters for this area:",
+  allRosters.map((r) => ({
+    date: r.date,
+    employees: r.employeeIds.length,
+  }))
+);
     if (!areaId) return json({ error: 'No area' }, 400);
-    const roster = await db.collection('rosters').findOne({ areaId, date });
     const empIds = roster ? roster.employeeIds : [];
     const emps = await db.collection('users').find({ id: { $in: empIds } }).toArray();
     const empMap = Object.fromEntries(emps.map(e => [e.id, e]));

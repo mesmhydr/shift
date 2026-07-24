@@ -1,6 +1,7 @@
 'use client';
 import Image from "next/image";
 import ExcelJS from "exceljs";
+import { todayStr, londonNow } from "@/lib/date";
 import { saveAs } from "file-saver";
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/shiftops-client';
@@ -31,10 +32,6 @@ const fmtTime = (d) => {
   return t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 const fmtDateFull = (d) => new Date(d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
 const useNow = () => {
   const [n, setN] = useState(Date.now());
   useEffect(() => { const i = setInterval(() => setN(Date.now()), 1000); return () => clearInterval(i); }, []);
@@ -228,8 +225,10 @@ function DashboardTab({ areaName }) {
   return (
     <div>
       <LargeTitle title="Today" />
-      <div className="px-5 text-[15px] text-[#8E8E93] -mt-2">{fmtDateFull(new Date())} · {areaName}</div>
-
+<LargeTitle title="Today" />
+<div className="px-5 text-[15px] text-[#8E8E93] -mt-2">
+  {fmtDateFull(londonNow())} · {areaName}
+</div>
       <div className="px-4 mt-5 grid grid-cols-3 gap-2">
         <StatCard label="Working" value={s.working ?? 0} color={C.green} />
         <StatCard label="On Break" value={s.onBreak ?? 0} color={C.blue} />
@@ -1009,8 +1008,7 @@ function SettingsTab({ user, onLogout, refreshArea }) {
         <Row onClick={async () => {
           if (!confirm("Clear today's history? Completed breaks will be permanently deleted.")) return;
           try {
-            const t = new Date();
-            const d = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+            const d = todayStr();
             const r = await api(`/history?date=${d}`, { method: 'DELETE' });
             fx.success();
             alert(`Deleted ${r.deleted} records`);
