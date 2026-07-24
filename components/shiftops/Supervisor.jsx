@@ -1,13 +1,37 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '@/lib/shiftops-client';
 import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
 import {
   LayoutDashboard, CalendarDays, History, Settings as SettingsIcon,
   Coffee, UtensilsCrossed, Check, X, Clock, ChevronRight, Plus, Trash2, Pencil, LogOut, KeyRound, ArrowLeft, ChevronLeft,
   Bell, Vibrate, Volume2, Eraser,
 } from 'lucide-react';
+import {
+  approveBreak,
+  clearAllHistory,
+  clearHistoryForDate,
+  createArea,
+  createEmployee,
+  deleteArea,
+  deleteEmployee,
+  endBreak,
+  getDashboardData,
+  getHistory,
+  getRosterCalendar,
+  getRosterForDate,
+  getSettingsData,
+  listAreas,
+  listEmployees,
+  listPasswordRequests,
+  rejectBreak,
+  renameArea,
+  resetEmployeePassword,
+  saveRoster,
+  startBreak,
+  updateEmployee,
+  updateSettings,
+} from '@/lib/shiftops/actions';
 
 const C = {
   bg: '#F5F5F7',
@@ -159,14 +183,14 @@ function DashboardTab({ areaName }) {
 
   const load = async () => {
     try {
-      const d = await api('/dashboard');
+      const d = await getDashboardData();
       setData(d);
     } finally { setLoading(false); }
   };
 
   useEffect(() => {
     load();
-    const i = setInterval(load, 3000);
+    const i = setInterval(load, 30000);
     return () => clearInterval(i);
   }, []);
 
@@ -225,11 +249,11 @@ function EmployeeActions({ e, act }) {
   if (s?.status === 'pending') {
     return (
       <div className="mt-3 flex gap-2">
-        <button onClick={() => act(() => api(`/breaks/${s.id}/approve`, { method: 'POST' }))}
+        <button onClick={() => act(() => approveBreak(s.id))}
           className="flex-1 rounded-xl py-2 text-[15px] font-semibold text-white" style={{ background: C.green }}>
           Approve {s.type === 'lunch' ? 'Lunch' : 'Tea'}
         </button>
-        <button onClick={() => act(() => api(`/breaks/${s.id}/reject`, { method: 'POST' }))}
+        <button onClick={() => act(() => rejectBreak(s.id))}
           className="flex-1 rounded-xl py-2 text-[15px] font-semibold" style={{ background: '#F2F2F7', color: C.red }}>
           Reject
         </button>
@@ -239,11 +263,11 @@ function EmployeeActions({ e, act }) {
   if (s?.status === 'pending_return') {
     return (
       <div className="mt-3 flex gap-2">
-        <button onClick={() => act(() => api(`/breaks/${s.id}/approve`, { method: 'POST' }))}
+        <button onClick={() => act(() => approveBreak(s.id))}
           className="flex-1 rounded-xl py-2 text-[15px] font-semibold text-white" style={{ background: C.green }}>
           Approve Return
         </button>
-        <button onClick={() => act(() => api(`/breaks/${s.id}/end`, { method: 'POST' }))}
+        <button onClick={() => act(() => endBreak(s.id))}
           className="flex-1 rounded-xl py-2 text-[15px] font-semibold" style={{ background: '#F2F2F7', color: C.text }}>
           Force End
         </button>
@@ -253,7 +277,7 @@ function EmployeeActions({ e, act }) {
   if (s?.status === 'active') {
     return (
       <div className="mt-3">
-        <button onClick={() => act(() => api(`/breaks/${s.id}/end`, { method: 'POST' }))}
+        <button onClick={() => act(() => endBreak(s.id))}
           className="w-full rounded-xl py-2 text-[15px] font-semibold" style={{ background: '#F2F2F7', color: C.text }}>
           End Break
         </button>
@@ -267,13 +291,13 @@ function EmployeeActions({ e, act }) {
   return (
     <div className="mt-3 flex gap-2">
       {showLunch && (
-        <button onClick={() => { if (confirm(`Start Lunch for ${e.name}?`)) act(() => api('/breaks/start', { method: 'POST', body: { employeeId: e.id, type: 'lunch' } })); }}
+        <button onClick={() => { if (confirm(`Start Lunch for ${e.name}?`)) act(() => startBreak(e.id, 'lunch')); }}
           className="flex-1 rounded-xl py-2 text-[15px] font-semibold" style={{ background: 'rgba(255,149,0,0.12)', color: C.orange }}>
           Start Lunch
         </button>
       )}
       {showTea && (
-        <button onClick={() => { if (confirm(`Start Tea for ${e.name}?`)) act(() => api('/breaks/start', { method: 'POST', body: { employeeId: e.id, type: 'tea' } })); }}
+        <button onClick={() => { if (confirm(`Start Tea for ${e.name}?`)) act(() => startBreak(e.id, 'tea')); }}
           className="flex-1 rounded-xl py-2 text-[15px] font-semibold" style={{ background: 'rgba(52,199,89,0.12)', color: C.green }}>
           Start Tea
         </button>
@@ -296,7 +320,7 @@ function RosterTab({ areaId }) {
   const loadCal = async () => {
     if (!areaId) return;
     try {
-      const { dates } = await api(`/rosters/calendar?areaId=${areaId}&month=${monthStr}`);
+      const { dates } = await getRosterCalendar(areaId, monthStr);
       const map = {};
       dates.forEach(d => map[d.date] = d.count);
       setCalendar(map);
@@ -396,8 +420,8 @@ function RosterSheet({ date, areaId, onClose }) {
   useEffect(() => {
     (async () => {
       const [emp, ros] = await Promise.all([
-        api('/employees'),
-        api(`/rosters?areaId=${areaId}&date=${date}`),
+        listEmployees(),
+        getRosterForDate(areaId, date),
       ]);
       setAllEmps(emp.employees);
       setSelected(new Set((ros.roster?.employees || []).map(e => e.id)));
@@ -415,7 +439,7 @@ function RosterSheet({ date, areaId, onClose }) {
     if (loading) return; // guard: don't save empty over unloaded roster
     setSaving(true);
     try {
-      await api('/rosters', { method: 'POST', body: { areaId, date, employeeIds: Array.from(selected) } });
+      await saveRoster(areaId, date, Array.from(selected));
       onClose();
     } catch (e) { alert(e.message); }
     finally { setSaving(false); }
@@ -466,7 +490,7 @@ function HistoryTab({ areaId }) {
     (async () => {
       setLoading(true);
       try {
-        const { records } = await api(`/history?areaId=${areaId}&date=${date}`);
+        const { records } = await getHistory(areaId, date);
         setRecords(records);
       } finally { setLoading(false); }
     })();
@@ -528,7 +552,10 @@ function SettingsTab({ user, onLogout, refreshArea }) {
 
   const loadAll = async () => {
     const [s, e, a, pr] = await Promise.all([
-      api('/settings'), api('/employees'), api('/areas'), api('/password-requests'),
+      getSettingsData(),
+      listEmployees(),
+      listAreas(),
+      listPasswordRequests(),
     ]);
     setSettings(s.settings); setEmployees(e.employees); setAreas(a.areas); setPassReqs(pr.requests);
   };
@@ -537,12 +564,12 @@ function SettingsTab({ user, onLogout, refreshArea }) {
   const toggle = async (key) => {
     const next = { ...settings, [key]: !settings[key] };
     setSettings(next);
-    await api('/settings', { method: 'PATCH', body: { [key]: next[key] } });
+    await updateSettings({ [key]: next[key] });
   };
 
   const switchArea = async (id) => {
     setSettings({ ...settings, currentAreaId: id });
-    await api('/settings', { method: 'PATCH', body: { currentAreaId: id } });
+    await updateSettings({ currentAreaId: id });
     refreshArea();
   };
 
@@ -589,7 +616,7 @@ function SettingsTab({ user, onLogout, refreshArea }) {
                 const np = prompt(`Set new password for ${r.employeeName}:`);
                 if (!np) return;
                 try {
-                  await api(`/employees/${r.employeeId}/reset-password`, { method: 'POST', body: { newPassword: np, requestId: r.id } });
+                  await resetEmployeePassword(r.employeeId, np, r.id);
                   await loadAll();
                 } catch (e) { alert(e.message); }
               }} className="text-[15px] font-semibold text-[#007AFF]">Reset Password</button>
@@ -634,7 +661,7 @@ function SettingsTab({ user, onLogout, refreshArea }) {
           try {
             const t = new Date();
             const d = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-            const r = await api(`/history?date=${d}`, { method: 'DELETE' });
+            const r = await clearHistoryForDate(d);
             fx.success();
             alert(`Deleted ${r.deleted} records`);
           } catch (e) { fx.error(); alert(e.message); }
@@ -645,7 +672,7 @@ function SettingsTab({ user, onLogout, refreshArea }) {
         <Row onClick={async () => {
           if (!confirm('Clear ALL history for this area? This cannot be undone.')) return;
           try {
-            const r = await api(`/history?all=1`, { method: 'DELETE' });
+            const r = await clearAllHistory();
             fx.success();
             alert(`Deleted ${r.deleted} records`);
           } catch (e) { fx.error(); alert(e.message); }
@@ -656,8 +683,8 @@ function SettingsTab({ user, onLogout, refreshArea }) {
       </Section>
 
       <Section header="Organization">
-        <EditRow label="Organization" value={settings.organizationName} onSave={async (v) => { await api('/settings', { method: 'PATCH', body: { organizationName: v } }); loadAll(); }} />
-        <EditRow label="Supervisor" value={settings.supervisorName} onSave={async (v) => { await api('/settings', { method: 'PATCH', body: { supervisorName: v } }); loadAll(); }} />
+        <EditRow label="Organization" value={settings.organizationName} onSave={async (v) => { await updateSettings({ organizationName: v }); loadAll(); }} />
+        <EditRow label="Supervisor" value={settings.supervisorName} onSave={async (v) => { await updateSettings({ supervisorName: v }); loadAll(); }} />
       </Section>
 
       <Section header="About">
@@ -729,9 +756,9 @@ function EmployeeEdit({ emp, onClose }) {
     try {
       if (isNew) {
         if (!f.password) { alert('Password required'); setBusy(false); return; }
-        await api('/employees', { method: 'POST', body: f });
+        await createEmployee(f);
       } else {
-        await api(`/employees/${emp.id}`, { method: 'PATCH', body: f });
+        await updateEmployee(emp.id, f);
       }
       onClose();
     } catch (e) { alert(e.message); }
@@ -740,14 +767,14 @@ function EmployeeEdit({ emp, onClose }) {
 
   const remove = async () => {
     if (!confirm(`Delete ${emp.name}? This cannot be undone.`)) return;
-    await api(`/employees/${emp.id}`, { method: 'DELETE' });
+    await deleteEmployee(emp.id);
     onClose();
   };
 
   const resetPw = async () => {
     const np = prompt('New password:');
     if (!np) return;
-    await api(`/employees/${emp.id}/reset-password`, { method: 'POST', body: { newPassword: np } });
+    await resetEmployeePassword(emp.id, np);
     alert('Password reset.');
   };
 
@@ -810,20 +837,20 @@ function AreasSheet({ areas, currentId, onClose }) {
 
   const add = async () => {
     if (!newName.trim()) return;
-    const r = await api('/areas', { method: 'POST', body: { name: newName.trim() } });
-    setList([...list, r]);
+    const r = await createArea(newName.trim());
+    setList([...list, r.area]);
     setNewName('');
   };
   const rename = async (a) => {
     const n = prompt('Rename area', a.name);
     if (!n) return;
-    await api(`/areas/${a.id}`, { method: 'PATCH', body: { name: n } });
+    await renameArea(a.id, n);
     setList(list.map(x => x.id === a.id ? { ...x, name: n } : x));
   };
   const del = async (a) => {
     if (!confirm(`Delete area "${a.name}"?`)) return;
     try {
-      await api(`/areas/${a.id}`, { method: 'DELETE' });
+      await deleteArea(a.id);
       setList(list.filter(x => x.id !== a.id));
     } catch (e) { alert(e.message); }
   };
@@ -865,7 +892,7 @@ export default function Supervisor({ user, onLogout }) {
   const [tick, setTick] = useState(0);
 
   const loadArea = async () => {
-    const [{ settings }, { areas }] = await Promise.all([api('/settings'), api('/areas')]);
+    const [{ settings, areas }] = await Promise.all([getSettingsData(), listAreas()]);
     setAreaId(settings.currentAreaId);
     const a = areas.find(x => x.id === settings.currentAreaId);
     setAreaName(a?.name || '');
