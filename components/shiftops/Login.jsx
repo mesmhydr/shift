@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { api, setToken } from '@/lib/shiftops-client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { fx, ensureNotifPermission } from '@/lib/shiftops-fx';
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin@shiftops.io');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('admin@shiftops.com');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showReset, setShowReset] = useState(false);
@@ -17,11 +17,12 @@ export default function Login({ onLogin }) {
     setLoading(true);
     fx.tap();
     try {
-      const { token } = await api('/auth/login', {
-        method: 'POST',
-        body: { email: email.trim(), password },
+      const supabase = getSupabaseBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
       });
-      setToken(token);
+      if (signInError) throw signInError;
       fx.success();
       // Prompt for notification permission on successful login (user gesture)
       ensureNotifPermission();
@@ -100,14 +101,6 @@ export default function Login({ onLogin }) {
           </div>
         )}
 
-        <div className="mt-8 p-4 bg-white rounded-2xl">
-          <p className="text-[13px] font-semibold text-[#1D1D1F] mb-2">Demo credentials</p>
-          <div className="text-[13px] text-[#8E8E93] space-y-1">
-            <div><span className="text-[#1D1D1F]">Supervisor:</span> admin@shiftops.io / admin123</div>
-            <div><span className="text-[#1D1D1F]">Employee:</span> sarah@shiftops.io / emp123</div>
-            <div className="text-[12px] mt-2">Also: john, michael, david, emma @shiftops.io / emp123</div>
-          </div>
-        </div>
       </div>
     </div>
   );

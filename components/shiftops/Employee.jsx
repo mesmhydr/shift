@@ -1,10 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/shiftops-client';
 import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
 import { BottomNav } from '@/components/shiftops/Supervisor';
 import { Home as HomeIcon, Bell, User, Coffee, UtensilsCrossed, LogOut, KeyRound, Check, Vibrate, Volume2 } from 'lucide-react';
+import {
+  changePassword,
+  getMyStatus,
+  getNotificationsForCurrentUser,
+  markNotificationsRead,
+  requestBreak,
+  requestPasswordReset,
+  returnBreak,
+} from '@/lib/shiftops/actions';
 
 const C = {
   bg: '#F5F5F7', text: '#1D1D1F', muted: '#8E8E93', sep: 'rgba(0,0,0,0.06)',
@@ -32,7 +40,7 @@ function HomeTab({ user }) {
   const now = useNow();
 
   const load = async () => {
-    try { setStatus(await api('/my/status')); } finally { setLoading(false); }
+    try { setStatus(await getMyStatus()); } finally { setLoading(false); }
   };
   useEffect(() => {
     load();
@@ -102,7 +110,7 @@ function HomeTab({ user }) {
 
       <div className="mx-4 mt-4 space-y-2">
         {active?.status === 'active' && (
-          <button onClick={() => act(() => api('/breaks/return', { method: 'POST' }))}
+          <button onClick={() => act(() => returnBreak())}
             className="w-full rounded-2xl py-4 text-[17px] font-semibold text-white" style={{ background: C.blue }}>
             Return to Work
           </button>
@@ -111,7 +119,7 @@ function HomeTab({ user }) {
         {!active && (
           <>
             {status.lunch.status === 'Not Taken' ? (
-              <button onClick={() => act(() => api('/breaks/request', { method: 'POST', body: { type: 'lunch' } }))}
+              <button onClick={() => act(() => requestBreak('lunch'))}
                 className="w-full rounded-2xl py-4 text-[17px] font-semibold text-white flex items-center justify-center gap-2" style={{ background: C.orange }}>
                 <UtensilsCrossed size={20} /> Request Lunch (30 min)
               </button>
@@ -121,7 +129,7 @@ function HomeTab({ user }) {
               </div>
             )}
             {status.tea.status === 'Not Taken' ? (
-              <button onClick={() => act(() => api('/breaks/request', { method: 'POST', body: { type: 'tea' } }))}
+              <button onClick={() => act(() => requestBreak('tea'))}
                 className="w-full rounded-2xl py-4 text-[17px] font-semibold text-white flex items-center justify-center gap-2" style={{ background: C.green }}>
                 <Coffee size={20} /> Request Tea (15 min)
               </button>
@@ -171,9 +179,9 @@ function NotificationsTab() {
   useEffect(() => {
     (async () => {
       try {
-        const { notifications } = await api('/notifications');
+        const { notifications } = await getNotificationsForCurrentUser();
         setList(notifications);
-        await api('/notifications/read-all', { method: 'POST' });
+        await markNotificationsRead();
       } finally { setLoading(false); }
     })();
   }, []);
@@ -214,7 +222,7 @@ function ProfileTab({ user, onLogout, refreshUser }) {
   const changePw = async () => {
     setBusy(true);
     try {
-      await api('/auth/change-password', { method: 'POST', body: { currentPassword: cur, newPassword: np } });
+      await changePassword(cur, np);
       alert('Password changed');
       setShowChange(false); setCur(''); setNp('');
     } catch (e) { alert(e.message); }
@@ -223,7 +231,7 @@ function ProfileTab({ user, onLogout, refreshUser }) {
 
   const requestReset = async () => {
     if (!confirm('Send a password reset request to your supervisor?')) return;
-    await api('/auth/request-password-reset', { method: 'POST' });
+    await requestPasswordReset();
     alert('Request sent to supervisor.');
   };
 

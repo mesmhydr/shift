@@ -22,7 +22,7 @@ const Carousel = React.forwardRef((
   {
     orientation = "horizontal",
     opts,
-    setApi,
+    setEmblaApi,
     plugins,
     className,
     children,
@@ -30,7 +30,7 @@ const Carousel = React.forwardRef((
   },
   ref
 ) => {
-  const [carouselRef, api] = useEmblaCarousel({
+  const [carouselRef, emblaApi] = useEmblaCarousel({
     ...opts,
     axis: orientation === "horizontal" ? "x" : "y",
   }, plugins)
@@ -47,12 +47,12 @@ const Carousel = React.forwardRef((
   }, [])
 
   const scrollPrev = React.useCallback(() => {
-    api?.scrollPrev()
-  }, [api])
+    emblaApi?.scrollPrev()
+  }, [emblaApi])
 
   const scrollNext = React.useCallback(() => {
-    api?.scrollNext()
-  }, [api])
+    emblaApi?.scrollNext()
+  }, [emblaApi])
 
   const handleKeyDown = React.useCallback((event) => {
     if (event.key === "ArrowLeft") {
@@ -65,32 +65,32 @@ const Carousel = React.forwardRef((
   }, [scrollPrev, scrollNext])
 
   React.useEffect(() => {
-    if (!api || !setApi) {
+    if (!emblaApi || !setEmblaApi) {
       return
     }
 
-    setApi(api)
-  }, [api, setApi])
+    setEmblaApi(emblaApi)
+  }, [emblaApi, setEmblaApi])
 
   React.useEffect(() => {
-    if (!api) {
+    if (!emblaApi) {
       return
     }
 
-    onSelect(api)
-    api.on("reInit", onSelect)
-    api.on("select", onSelect)
+    onSelect(emblaApi)
+    emblaApi.on("reInit", onSelect)
+    emblaApi.on("select", onSelect)
 
     return () => {
-      api?.off("select", onSelect)
+      emblaApi?.off("select", onSelect)
     };
-  }, [api, onSelect])
+  }, [emblaApi, onSelect])
 
   return (
     <CarouselContext.Provider
       value={{
         carouselRef,
-        api: api,
+        api: emblaApi,
         opts,
         orientation:
           orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
