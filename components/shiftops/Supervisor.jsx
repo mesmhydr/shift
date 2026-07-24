@@ -1,5 +1,7 @@
 'use client';
 import Image from "next/image";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/shiftops-client';
 import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
@@ -508,6 +510,71 @@ function HistoryTab({ areaId }) {
   const [date, setDate] = useState(todayStr());
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  const groupedRecords = useMemo(() => {
+  const groups = {};
+  
+  
+
+  records.forEach((r) => {
+    const key = r.employeeName; // later change to employeeId if you add it
+
+    if (!groups[key]) {
+      groups[key] = {
+        employeeName: r.employeeName,
+        department: r.department,
+        lunch: null,
+        tea: null,
+      };
+    }
+
+    if (r.type === "lunch") groups[key].lunch = r;
+    if (r.type === "tea") groups[key].tea = r;
+  });
+
+  return Object.values(groups);
+}, [records]);
+
+const exportHistory = () => {
+  const data = groupedRecords.map((r) => ({
+    Date: date,
+    Employee: r.employeeName,
+    Department: r.department,
+
+    "Lunch Start": r.lunch ? fmtTime(r.lunch.startAt) : "-",
+    "Lunch End": r.lunch ? fmtTime(r.lunch.endAt) : "-",
+    "Lunch Duration": r.lunch
+      ? (r.lunch.durationSec != null
+          ? `${Math.floor(r.lunch.durationSec / 60)}m ${r.lunch.durationSec % 60}s`
+          : `${r.lunch.durationMin} min`)
+      : "-",
+
+    "Tea Start": r.tea ? fmtTime(r.tea.startAt) : "-",
+    "Tea End": r.tea ? fmtTime(r.tea.endAt) : "-",
+    "Tea Duration": r.tea
+      ? (r.tea.durationSec != null
+          ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
+          : `${r.tea.durationMin} min`)
+      : "-",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "History");
+
+  const buffer = XLSX.write(wb, {
+    bookType: "xlsx",
+    type: "array",
+  });
+
+  saveAs(
+    new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    `History-${date}.xlsx`
+  );
+};
 
   useEffect(() => {
     (async () => {
@@ -526,35 +593,68 @@ function HistoryTab({ areaId }) {
         <CalendarDays size={20} className="text-[#007AFF]" />
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
           className="flex-1 bg-transparent text-[16px] outline-none text-[#1D1D1F]" />
+          <button
+  onClick={exportHistory}
+  className="px-3 py-2 rounded-xl bg-[#007AFF] text-white text-[14px] font-medium"
+>
+  Export
+</button>
       </div>
-      <Section header={`${records.length} completed breaks`}>
+      <Section header={`${groupedRecords.length} employees`}>
         {loading && <div className="p-6 text-center text-[#8E8E93]">Loading…</div>}
         {!loading && records.length === 0 && (
           <div className="p-6 text-center text-[#8E8E93] text-[14px]">No completed breaks on this date.</div>
         )}
-        {records.map((r, i) => (
-          <div key={r.id} className="px-4 py-3.5" style={{ borderTop: i > 0 ? `1px solid ${C.sep}` : undefined }}>
+        {groupedRecords.map((r, i) => (
+          <div
+  key={r.employeeName}
+  className="px-4 py-3.5"
+  style={{ borderTop: i > 0 ? `1px solid ${C.sep}` : undefined }}
+>
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-[16px] font-medium text-[#1D1D1F]">{r.employeeName}</div>
                 <div className="text-[13px] text-[#8E8E93]">{r.department}</div>
               </div>
-              <div className="text-right">
-                <div className="flex items-center gap-1.5 justify-end">
-                  {r.type === 'lunch' ? <UtensilsCrossed size={14} color={C.orange} /> : <Coffee size={14} color={C.green} />}
-                  <span className="text-[15px] font-semibold" style={{ color: r.type === 'lunch' ? C.orange : C.green }}>
-                    {r.type === 'lunch' ? 'Lunch' : 'Tea'}
-                  </span>
-                </div>
-                <div className="text-[13px] text-[#8E8E93] mt-0.5">
-  {fmtTime(r.startAt)} – {fmtTime(r.endAt)} ·{" "}
-  <span className={r.exceeded ? "text-[#FF3B30]" : ""}>
-    {r.durationSec != null
-      ? `${Math.floor(r.durationSec / 60)}m ${r.durationSec % 60}s`
-      : `${r.durationMin} min`}
+              <div className="mt-3 space-y-3">
+
+  {r.lunch && (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <UtensilsCrossed size={14} color={C.orange} />
+        <span className="text-[15px] font-medium">Lunch</span>
+      </div>
+      <div className="text-[13px] text-[#8E8E93] flex items-center gap-2">
+  <span>{fmtTime(r.lunch.startAt)} – {fmtTime(r.lunch.endAt)}</span>
+  <span>•</span>
+  <span className={r.lunch.exceeded ? "text-[#FF3B30]" : ""}>
+    {r.lunch.durationSec != null
+      ? `${Math.floor(r.lunch.durationSec / 60)}m ${r.lunch.durationSec % 60}s`
+      : `${r.lunch.durationMin} min`}
   </span>
 </div>
-              </div>
+    </div>
+  )}
+
+  {r.tea && (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Coffee size={14} color={C.green} />
+        <span className="text-[15px] font-medium">Tea</span>
+      </div>
+      <div className="text-[13px] text-[#8E8E93] flex items-center gap-2">
+  <span>{fmtTime(r.tea.startAt)} – {fmtTime(r.tea.endAt)}</span>
+  <span>•</span>
+  <span className={r.tea.exceeded ? "text-[#FF3B30]" : ""}>
+    {r.tea.durationSec != null
+      ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
+      : `${r.tea.durationMin} min`}
+  </span>
+</div>
+    </div>
+  )}
+
+</div>
             </div>
           </div>
         ))}
@@ -941,7 +1041,6 @@ export default function Supervisor({ user, onLogout }) {
     </div>
   );
 }
-
 export function BottomNav({ tab, setTab, items }) {
   return (
     <div className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t" style={{ borderColor: C.sep, paddingBottom: 'env(safe-area-inset-bottom)' }}>
