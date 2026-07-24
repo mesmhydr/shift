@@ -44,7 +44,7 @@ function HomeTab({ user }) {
   };
   useEffect(() => {
     load();
-    const i = setInterval(load, 2000);
+    const i = setInterval(load, 20000);
     return () => clearInterval(i);
   }, []);
 

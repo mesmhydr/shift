@@ -52,7 +52,7 @@ function useNotificationWatcher(user) {
       } catch {}
     };
     check();
-    const i = setInterval(check, 4000);
+    const i = setInterval(check, 40000);
     return () => { cancelled = true; clearInterval(i); };
   }, [user?.id]);
 }

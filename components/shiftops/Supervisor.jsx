@@ -190,7 +190,7 @@ function DashboardTab({ areaName }) {
 
   useEffect(() => {
     load();
-    const i = setInterval(load, 3000);
+    const i = setInterval(load, 30000);
     return () => clearInterval(i);
   }, []);
 
