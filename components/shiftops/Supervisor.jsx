@@ -225,7 +225,6 @@ function DashboardTab({ areaName }) {
   return (
     <div>
       <LargeTitle title="Today" />
-<LargeTitle title="Today" />
 <div className="px-5 text-[15px] text-[#8E8E93] -mt-2">
   {fmtDateFull(londonNow())} · {areaName}
 </div>
@@ -360,15 +359,14 @@ function RosterTab({ areaId }) {
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const today = new Date();
-  const isToday = (d) => d === today.getDate() && month.m === today.getMonth() && month.y === today.getFullYear();
-  const isPast = (d) => {
-    const dt = new Date(month.y, month.m, d);
-    const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    return dt < t;
-  };
-  const dateKey = (d) => `${month.y}-${String(month.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+ const today = londonNow();
 
+  const dateKey = (d) => `${month.y}-${String(month.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const todayKey = todayStr();
+
+const isToday = (d) => dateKey(d) === todayKey;
+
+const isPast = (d) => dateKey(d) < todayKey;
   const shiftMonth = (delta) => {
     let y = month.y, m = month.m + delta;
     if (m < 0) { m = 11; y--; }
