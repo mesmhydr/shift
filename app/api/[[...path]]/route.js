@@ -22,7 +22,7 @@ async function ensureSeed() {
   const areaId = uuidv4();
   await db.collection('areas').insertOne({ id: areaId, name: 'Lobby', createdAt: new Date() });
 
-  const supgetFullYearervisorId = uuidv4();
+  const supervisorId = uuidv4();
   await db.collection('users').insertOne({
     id: supervisorId,
     email: 'admin@shiftops.io',
@@ -410,26 +410,11 @@ async function handle(request, params, method) {
     
 const roster = await db.collection("rosters").findOne({ areaId, date });
 
-console.log({
-  requestedDate: date,
-  areaId,
-  rosterFound: !!roster,
-  rosterDate: roster?.date,
-  employeeCount: roster?.employeeIds?.length,
-});
-
 const allRosters = await db
   .collection("rosters")
   .find({ areaId })
   .toArray();
 
-console.log(
-  "All rosters for this area:",
-  allRosters.map((r) => ({
-    date: r.date,
-    employees: r.employeeIds.length,
-  }))
-);
     if (!areaId) return json({ error: 'No area' }, 400);
     const empIds = roster ? roster.employeeIds : [];
     const emps = await db.collection('users').find({ id: { $in: empIds } }).toArray();
