@@ -121,10 +121,15 @@ function BreakBadge({ type, info }) {
   if (info.status === 'Completed') {
     return (
       <div className="flex items-center gap-1 text-[12px] text-[#8E8E93]">
-        {icon}<span>{label}</span>
-        <Check size={14} className="text-[#34C759]" />
-        <span>{info.durationMin} min</span>
-      </div>
+  {icon}
+  <span>{label}</span>
+  <Check size={14} className="text-[#34C759]" />
+  <span>
+    {info.durationSec != null
+      ? `${Math.floor(info.durationSec / 60)}m ${info.durationSec % 60}s`
+      : `${info.durationMin} min`}
+  </span>
+</div>
     );
   }
   if (info.status === 'Running') {
@@ -542,8 +547,13 @@ function HistoryTab({ areaId }) {
                   </span>
                 </div>
                 <div className="text-[13px] text-[#8E8E93] mt-0.5">
-                  {fmtTime(r.startAt)} – {fmtTime(r.endAt)} · <span className={r.exceeded ? 'text-[#FF3B30]' : ''}>{r.durationMin} min</span>
-                </div>
+  {fmtTime(r.startAt)} – {fmtTime(r.endAt)} ·{" "}
+  <span className={r.exceeded ? "text-[#FF3B30]" : ""}>
+    {r.durationSec != null
+      ? `${Math.floor(r.durationSec / 60)}m ${r.durationSec % 60}s`
+      : `${r.durationMin} min`}
+  </span>
+</div>
               </div>
             </div>
           </div>

@@ -163,7 +163,7 @@ async function computeEmployeeStatus(employeeId, areaId, date) {
 
   const summarize = (s) => {
     if (!s) return { status: 'Not Taken' };
-    if (s.status === 'completed') return { status: 'Completed', durationMin: s.durationMin, startAt: s.startAt, endAt: s.endAt };
+    if (s.status === 'completed') return { status: 'Completed', durationMin: s.durationMin, durationSec: s.durationSec, startAt: s.startAt, endAt: s.endAt };
     if (s.status === 'rejected') return { status: 'Not Taken' };
     if (s.status === 'pending') return { status: 'Pending', sessionId: s.id, type: s.type };
     if (s.status === 'active') return { status: 'Running', sessionId: s.id, startAt: s.startAt, type: s.type };
@@ -537,8 +537,20 @@ async function handle(request, params, method) {
       await notify(sess.employeeId, 'Break Approved', `Your ${sess.type} break was approved.`);
     } else if (sess.status === 'pending_return') {
       const endAt = new Date();
-      const durationMin = Math.round((endAt - new Date(sess.startAt)) / 60000);
-      await db.collection('break_sessions').updateOne({ id: p1 }, { $set: { status: 'completed', endAt, durationMin } });
+const durationSec = Math.floor((endAt - new Date(sess.startAt)) / 1000);
+const durationMin = Math.floor(durationSec / 60);
+
+await db.collection('break_sessions').updateOne(
+  { id: p1 },
+  {
+    $set: {
+      status: 'completed',
+      endAt,
+      durationMin,
+      durationSec,
+    },
+  }
+);
       await notify(sess.employeeId, 'Return Approved', 'Welcome back to work.');
     }
     return json({ ok: true });
@@ -567,8 +579,14 @@ async function handle(request, params, method) {
       return json({ status: 'pending_return' });
     }
     const endAt = new Date();
-    const durationMin = Math.round((endAt - new Date(active.startAt)) / 60000);
-    await db.collection('break_sessions').updateOne({ id: active.id }, { $set: { status: 'completed', endAt, durationMin } });
+    const durationSec = Math.floor((endAt - new Date(active.startAt)) / 1000);
+    const durationMin = Math.floor(durationSec / 60);
+    await db.collection('break_sessions').updateOne({ id: active.id }, { $set: {
+  status: 'completed',
+  endAt,
+  durationMin,
+  durationSec,
+} });
     await notifySupervisors('Employee Returned', `${me.name} returned from ${active.type} (${durationMin} min).`, { employeeId: me.id });
     return json({ status: 'completed', durationMin });
   }
@@ -580,9 +598,20 @@ async function handle(request, params, method) {
     if (!sess) return json({ error: 'Not found' }, 404);
     if (!['active', 'pending_return'].includes(sess.status)) return json({ error: 'Not active' }, 400);
     const endAt = new Date();
-    const durationMin = Math.round((endAt - new Date(sess.startAt)) / 60000);
-    await db.collection('break_sessions').updateOne({ id: p1 }, { $set: { status: 'completed', endAt, durationMin } });
-    await notify(sess.employeeId, 'Break Ended', 'Your break was ended by the supervisor.');
+const durationSec = Math.floor((endAt - new Date(sess.startAt)) / 1000);
+const durationMin = Math.floor(durationSec / 60);
+
+await db.collection('break_sessions').updateOne(
+  { id: p1 },
+  {
+    $set: {
+      status: 'completed',
+      endAt,
+      durationMin,
+      durationSec,
+    },
+  }
+);await notify(sess.employeeId, 'Break Ended', 'Your break was ended by the supervisor.');
     return json({ ok: true });
   }
 
@@ -600,15 +629,16 @@ async function handle(request, params, method) {
     const empMap = Object.fromEntries(emps.map(e => [e.id, e]));
     return json({
       records: sessions.map(s => ({
-        id: s.id,
-        employeeName: empMap[s.employeeId]?.name || 'Unknown',
-        department: empMap[s.employeeId]?.department || '',
-        type: s.type,
-        startAt: s.startAt,
-        endAt: s.endAt,
-        durationMin: s.durationMin,
-        exceeded: s.durationMin > BREAK_DURATIONS[s.type],
-      })),
+  id: s.id,
+  employeeName: empMap[s.employeeId]?.name || 'Unknown',
+  department: empMap[s.employeeId]?.department || '',
+  type: s.type,
+  startAt: s.startAt,
+  endAt: s.endAt,
+  durationMin: s.durationMin,
+  durationSec: s.durationSec,
+  exceeded: s.durationMin > BREAK_DURATIONS[s.type],
+})),
     });
   }
 
