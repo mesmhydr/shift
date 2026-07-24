@@ -1,6 +1,6 @@
 'use client';
 import Image from "next/image";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/shiftops-client';
@@ -535,47 +535,272 @@ function HistoryTab({ areaId }) {
   return Object.values(groups);
 }, [records]);
 
-const exportHistory = () => {
-  const data = groupedRecords.map((r) => ({
-    Date: date,
-    Employee: r.employeeName,
-    Department: r.department,
+const exportHistory = async () => {
+  const workbook = new ExcelJS.Workbook();
 
-    "Lunch Start": r.lunch ? fmtTime(r.lunch.startAt) : "-",
-    "Lunch End": r.lunch ? fmtTime(r.lunch.endAt) : "-",
-    "Lunch Duration": r.lunch
+  workbook.creator = "ShiftOps";
+  workbook.company = "ShiftOps";
+  workbook.created = new Date();
+
+  const sheet = workbook.addWorksheet("Daily Report");
+
+const lunchCompleted = groupedRecords.filter(r => r.lunch).length;
+
+const teaCompleted = groupedRecords.filter(r => r.tea).length;
+
+const lunchExceeded = groupedRecords.filter(
+  r => r.lunch?.exceeded
+).length;
+
+const teaExceeded = groupedRecords.filter(
+  r => r.tea?.exceeded
+).length;
+  // We'll build the report here.
+  // ===== Report Title =====
+sheet.mergeCells("A1:H1");
+sheet.getCell("A1").value = "SHIFTOPS";
+sheet.getCell("A1").font = {
+  size: 24,
+  bold: true,
+  color: { argb: "FFFFFFFF" },
+};
+sheet.getCell("A1").alignment = {
+  horizontal: "center",
+  vertical: "middle",
+};
+sheet.getCell("A1").fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "FF007AFF" },
+};
+
+sheet.mergeCells("A2:H2");
+sheet.getCell("A2").value = "Daily Break Report";
+sheet.getCell("A2").font = {
+  size: 14,
+  italic: true,
+};
+sheet.getCell("A2").alignment = {
+  horizontal: "center",
+};
+
+sheet.addRow([]);
+
+const infoTitle = sheet.addRow(["Report Information"]);
+
+infoTitle.getCell(1).font = {
+  bold: true,
+  size: 14,
+};
+
+infoTitle.getCell(1).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "FFF3F4F6" },
+};
+
+sheet.addRow([
+  "Date",
+  new Date(date).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }),
+]);
+
+sheet.addRow([
+  "Generated",
+  new Date().toLocaleString("en-IN"),
+]);
+
+sheet.addRow([
+  "Employees",
+  groupedRecords.length,
+]);
+
+sheet.addRow([]);
+
+const summaryTitle = sheet.addRow(["Summary"]);
+
+summaryTitle.getCell(1).font = {
+  bold: true,
+  size: 14,
+};
+
+sheet.addRow([]);
+
+const labelRow = sheet.addRow([
+  "Employees",
+  "Lunch",
+  "Tea",
+  "Exceeded",
+]);
+
+const valueRow = sheet.addRow([
+  groupedRecords.length,
+  lunchCompleted,
+  teaCompleted,
+  lunchExceeded + teaExceeded,
+]);
+
+[labelRow, valueRow].forEach((row, idx) => {
+  row.height = idx === 0 ? 22 : 34;
+
+  row.eachCell((cell) => {
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFE5E7EB" } },
+      bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+      left: { style: "thin", color: { argb: "FFE5E7EB" } },
+      right: { style: "thin", color: { argb: "FFE5E7EB" } },
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: idx === 0 ? "FFF3F4F6" : "FFFFFFFF",
+      },
+    };
+  });
+});
+
+valueRow.eachCell((cell) => {
+  cell.font = {
+    bold: true,
+    size: 20,
+  };
+});
+
+sheet.addRow([]);
+const headerRow = sheet.addRow([
+  "Employee",
+  "Department",
+  "Tea Duration",
+  "Lunch Duration",
+  "Lunch Start",
+  "Lunch End",
+  "Tea Start",
+  "Tea End",
+]);
+
+headerRow.height = 24;
+
+headerRow.eachCell((cell) => {
+  cell.font = {
+    bold: true,
+    color: { argb: "FFFFFFFF" },
+  };
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF007AFF" },
+  };
+
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+  cell.border = {
+    top: { style: "thin" },
+    left: { style: "thin" },
+    bottom: { style: "thin" },
+    right: { style: "thin" },
+  };
+});
+groupedRecords.forEach((r, index) => {
+  const row = sheet.addRow([
+    r.employeeName,
+    r.department,
+    r.tea
+      ? (r.tea.durationSec != null
+          ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
+          : `${r.tea.durationMin} min`)
+      : "-",
+     r.lunch
       ? (r.lunch.durationSec != null
           ? `${Math.floor(r.lunch.durationSec / 60)}m ${r.lunch.durationSec % 60}s`
           : `${r.lunch.durationMin} min`)
       : "-",
 
-    "Tea Start": r.tea ? fmtTime(r.tea.startAt) : "-",
-    "Tea End": r.tea ? fmtTime(r.tea.endAt) : "-",
-    "Tea Duration": r.tea
-      ? (r.tea.durationSec != null
-          ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
-          : `${r.tea.durationMin} min`)
-      : "-",
-  }));
+    r.lunch ? fmtTime(r.lunch.startAt) : "-",
+    r.lunch ? fmtTime(r.lunch.endAt) : "-",
+   
+    r.tea ? fmtTime(r.tea.startAt) : "-",
+    r.tea ? fmtTime(r.tea.endAt) : "-",
+  ]);
 
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
+  // Alternate row colors
+  if (index % 2 === 0) {
+    row.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF8F9FA" },
+      };
+    });
+  }
 
-  XLSX.utils.book_append_sheet(wb, ws, "History");
+  // Borders + alignment
+  row.eachCell((cell) => {
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFE5E7EB" } },
+      bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+      left: { style: "thin", color: { argb: "FFE5E7EB" } },
+      right: { style: "thin", color: { argb: "FFE5E7EB" } },
+    };
 
-  const buffer = XLSX.write(wb, {
-    bookType: "xlsx",
-    type: "array",
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: cell.col <= 2 ? "left" : "center",
+    };
   });
+});
 
-  saveAs(
-    new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-    `History-${date}.xlsx`
-  );
+sheet.columns = [
+  { width: 24 },
+  { width: 20 },
+  { width: 18 },
+  { width: 18 },
+  { width: 16 },
+  { width: 16 },
+  { width: 16 },
+  { width: 16 },
+];
+
+sheet.views = [
+  {
+    showGridLines: false,
+    state: "frozen",
+    ySplit: headerRow.number,
+  },
+];
+
+sheet.autoFilter = {
+  from: {
+    row: headerRow.number,
+    column: 1,
+  },
+  to: {
+    row: headerRow.number,
+    column: 8,
+  },
 };
 
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  saveAs(
+    new Blob([buffer]),
+    `ShiftOps-Daily-Report-${date}.xlsx`
+  );
+};
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -813,15 +1038,43 @@ function SettingsTab({ user, onLogout, refreshArea }) {
       </Section>
 
       <Section header="About">
-        <Row><span className="flex-1 text-[16px]">Version</span><span className="text-[#8E8E93]">1.0.0</span></Row>
-        <Row><span className="flex-1 text-[16px]">Privacy Policy</span><ChevronRight size={18} className="text-[#C7C7CC]" /></Row>
-        <Row><span className="flex-1 text-[16px]">Support</span><ChevronRight size={18} className="text-[#C7C7CC]" /></Row>
-      </Section>
+  <Row>
+    <span className="flex-1 text-[16px]">Version</span>
+    <span className="text-[#8E8E93]">1.0.0</span>
+  </Row>
+
+  <Row
+    onClick={() =>
+      window.location.href =
+        "mailto:support@shiftops.app?subject=ShiftOps%20Bug%20Report&body=Device:%0ABrowser:%0AVersion:%201.0.0%0A%0ADescribe%20the%20issue:%0A%0ASteps%20to%20reproduce:%0A%0AExpected%20result:%0A%0AActual%20result:"
+    }
+  >
+    <span className="flex-1 text-[16px]">Report a Bug</span>
+    <ChevronRight size={18} className="text-[#C7C7CC]" />
+  </Row>
+
+  <Row onClick={() => window.location.href = "/privacy"}>
+    <span className="flex-1 text-[16px]">Privacy Policy</span>
+    <ChevronRight size={18} className="text-[#C7C7CC]" />
+  </Row>
+</Section>
 
       <div className="mx-4 mt-6">
-        <button onClick={onLogout} className="w-full bg-white rounded-2xl py-3.5 text-[17px] font-semibold text-[#FF3B30] flex items-center justify-center gap-2">
-          <LogOut size={18} /> Log Out
-        </button>
+        <button
+  onClick={() => {
+    const confirmed = window.confirm(
+      "Are you sure you want to log out?"
+    );
+
+    if (!confirmed) return;
+
+    onLogout();
+  }}
+  className="w-full bg-white rounded-2xl py-3.5 text-[17px] font-semibold text-[#FF3B30] flex items-center justify-center gap-2"
+>
+  <LogOut size={18} />
+  Log Out
+</button>
       </div>
 
       <div className="h-24" />
