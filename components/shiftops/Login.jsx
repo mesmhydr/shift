@@ -5,7 +5,7 @@ import { api, setToken } from '@/lib/shiftops-client';
 import { fx, ensureNotifPermission } from '@/lib/shiftops-fx';
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +19,7 @@ export default function Login({ onLogin }) {
     try {
       const { token } = await api('/auth/login', {
         method: 'POST',
-        body: { email: email.trim(), password },
+        body: { employeeId: employeeId.trim().toUpperCase(), password },
       });
       setToken(token);
       fx.success();
@@ -51,12 +51,12 @@ export default function Login({ onLogin }) {
         <form onSubmit={submit} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
           <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              type="text"
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value.toUpperCase())}
+              placeholder="Employee ID"
               className="w-full bg-transparent outline-none text-[17px] text-[#1D1D1F] placeholder:text-[#8E8E93]"
-              autoComplete="email"
+              autoComplete="username"
               required
             />
           </div>

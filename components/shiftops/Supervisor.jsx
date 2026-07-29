@@ -161,6 +161,8 @@ function DashboardTab({ areaName }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const now = useNow();
+
   const load = async () => {
     try {
       const d = await api('/dashboard');
@@ -226,7 +228,14 @@ function DashboardTab({ areaName }) {
     <div>
       <LargeTitle title="Today" />
 <div className="px-5 text-[15px] text-[#8E8E93] -mt-2">
-  {fmtDateFull(londonNow())} · {areaName}
+  {fmtDateFull(londonNow())} ·{" "}
+  {londonNow().toLocaleTimeString("en-GB", {
+    timeZone: "Europe/London",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false, // change to true if you want 9:42 PM instead of 21:42
+  })}{" "}
+  · {areaName}
 </div>
       <div className="px-4 mt-5 grid grid-cols-3 gap-2">
         <StatCard label="Working" value={s.working ?? 0} color={C.green} />
@@ -250,7 +259,7 @@ function DashboardTab({ areaName }) {
                   <span className="text-[17px] font-semibold text-[#1D1D1F]">{e.name}</span>
                   <StatusPill status={e.currentStatus} />
                 </div>
-                <div className="text-[13px] text-[#8E8E93] mt-0.5">{e.department} · {e.employeeRole}</div>
+                <div className="text-[13px] text-[#8E8E93] mt-0.5">{e.employeeId} · {e.role}</div>
                 <div className="flex items-center gap-4 mt-2">
                   <BreakBadge type="lunch" info={e.lunch} />
                   <BreakBadge type="tea" info={e.tea} />
@@ -492,7 +501,7 @@ function RosterSheet({ date, areaId, onClose }) {
                 </div>
                 <div className="flex-1">
                   <div className="text-[16px] text-[#1D1D1F]">{e.name}</div>
-                  <div className="text-[13px] text-[#8E8E93]">{e.department} · {e.employeeRole}</div>
+                  <div className="text-[13px] text-[#8E8E93]">{e.employeeId} · {e.role}</div>
                 </div>
               </div>
             ))}
@@ -519,7 +528,7 @@ function HistoryTab({ areaId }) {
     if (!groups[key]) {
       groups[key] = {
         employeeName: r.employeeName,
-        department: r.department,
+        employeeId: r.employeeId,
         lunch: null,
         tea: null,
       };
@@ -676,7 +685,7 @@ valueRow.eachCell((cell) => {
 sheet.addRow([]);
 const headerRow = sheet.addRow([
   "Employee",
-  "Department",
+  "Employee ID",
   "Tea Duration",
   "Lunch Duration",
   "Lunch Start",
@@ -714,7 +723,7 @@ headerRow.eachCell((cell) => {
 groupedRecords.forEach((r, index) => {
   const row = sheet.addRow([
     r.employeeName,
-    r.department,
+    r.employeeId,
     r.tea
       ? (r.tea.durationSec != null
           ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
@@ -836,7 +845,7 @@ sheet.autoFilter = {
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-[16px] font-medium text-[#1D1D1F]">{r.employeeName}</div>
-                <div className="text-[13px] text-[#8E8E93]">{r.department}</div>
+                <div className="text-[13px] text-[#8E8E93]">{r.employeeId}</div>
               </div>
               <div className="mt-3 space-y-3">
 
@@ -940,7 +949,7 @@ function SettingsTab({ user, onLogout, refreshArea }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[16px] text-[#1D1D1F] truncate">{e.name}</div>
-              <div className="text-[13px] text-[#8E8E93] truncate">{e.email}</div>
+              <div className="text-[13px] text-[#8E8E93] truncate">{e.employeeId}</div>
             </div>
             <ChevronRight size={18} className="text-[#C7C7CC]" />
           </Row>
@@ -958,12 +967,18 @@ function SettingsTab({ user, onLogout, refreshArea }) {
           {passReqs.map((r, i) => (
             <div key={r.id} className="px-4 py-3.5" style={{ borderTop: i > 0 ? `1px solid ${C.sep}` : undefined }}>
               <div className="text-[16px] text-[#1D1D1F]">{r.employeeName}</div>
-              <div className="text-[13px] text-[#8E8E93] mb-2">{r.employeeEmail}</div>
+              <div className="text-[13px] text-[#8E8E93] mb-2">{r.employeeId}</div>
               <button onClick={async () => {
                 const np = prompt(`Set new password for ${r.employeeName}:`);
                 if (!np) return;
                 try {
-                  await api(`/employees/${r.employeeId}/reset-password`, { method: 'POST', body: { newPassword: np, requestId: r.id } });
+                  await api(`/employees/${r.id}/reset-password`, {
+  method: 'POST',
+  body: {
+    newPassword: np,
+    requestId: r.id,
+  },
+});
                   await loadAll();
                 } catch (e) { alert(e.message); }
               }} className="text-[15px] font-semibold text-[#007AFF]">Reset Password</button>
@@ -1119,10 +1134,11 @@ function EditRow({ label, value, onSave }) {
 function EmployeeEdit({ emp, onClose }) {
   const isNew = !emp;
   const [f, setF] = useState({
-    name: emp?.name || '', email: emp?.email || '', phone: emp?.phone || '',
-    department: emp?.department || '', employeeRole: emp?.employeeRole || '',
-    password: '',
-  });
+  name: emp?.name || '',
+  employeeId: emp?.employeeId || '',
+  role: emp?.role || 'employee',
+  password: '',
+});
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -1162,15 +1178,53 @@ function EmployeeEdit({ emp, onClose }) {
         </div>
         <div className="p-4 space-y-3">
           <FieldGroup>
-            <Field label="Name" value={f.name} onChange={(v) => setF({ ...f, name: v })} />
-            <Field label="Email" value={f.email} onChange={(v) => setF({ ...f, email: v })} type="email" />
-            {isNew && <Field label="Password" value={f.password} onChange={(v) => setF({ ...f, password: v })} type="password" />}
-          </FieldGroup>
+  <Field
+    label="Name"
+    value={f.name}
+    onChange={(v) => setF({ ...f, name: v })}
+  />
+
+  <Field
+    label="Employee ID"
+    value={f.employeeId}
+    onChange={(v) =>
+      setF({
+        ...f,
+        employeeId: v.toUpperCase(),
+      })
+    }
+  />
+
+  {isNew && (
+    <Field
+      label="Password"
+      type="password"
+      value={f.password}
+      onChange={(v) => setF({ ...f, password: v })}
+    />
+  )}
+</FieldGroup>
           <FieldGroup>
-            <Field label="Phone" value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
-            <Field label="Department" value={f.department} onChange={(v) => setF({ ...f, department: v })} />
-            <Field label="Role" value={f.employeeRole} onChange={(v) => setF({ ...f, employeeRole: v })} />
-          </FieldGroup>
+  <div className="px-4 py-3 flex items-center gap-3 border-t">
+  <div className="text-[15px] text-[#8E8E93] w-24">
+    Role
+  </div>
+
+  <select
+    value={f.role}
+    onChange={(e) =>
+      setF({
+        ...f,
+        role: e.target.value,
+      })
+    }
+    className="flex-1 bg-transparent outline-none text-[16px]"
+  >
+    <option value="employee">Employee</option>
+    <option value="supervisor">Supervisor</option>
+  </select>
+</div>
+</FieldGroup>
           {!isNew && (
             <>
               <button onClick={resetPw} className="w-full bg-white border rounded-2xl py-3 text-[16px] font-medium text-[#007AFF] flex items-center justify-center gap-2" style={{ borderColor: C.sep }}>

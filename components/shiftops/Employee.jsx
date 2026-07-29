@@ -237,15 +237,14 @@ function ProfileTab({ user, onLogout, refreshUser }) {
         </div>
         <div>
           <div className="text-[20px] font-semibold text-[#1D1D1F]">{user.name}</div>
-          <div className="text-[14px] text-[#8E8E93]">{user.employeeRole || 'Employee'}</div>
+          <div className="text-[14px] text-[#8E8E93]">{user.role || 'Employee'}</div>
         </div>
       </div>
 
       <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Details</div>
       <div className="mx-4 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-        <InfoRow label="Department" value={user.department} first />
-        <InfoRow label="Email" value={user.email} />
-        <InfoRow label="Phone" value={user.phone} />
+        <InfoRow label="Employee ID" value={user.employeeId} first />
+<InfoRow label="Role" value={user.role} />
       </div>
 
       <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Preferences</div>
