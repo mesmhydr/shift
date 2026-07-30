@@ -4,6 +4,7 @@ self.addEventListener('activate', (e) => { self.clients.claim(); });
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  if (!req.url.startsWith('http')) return;
   const url = new URL(req.url);
   if (url.pathname.startsWith('/api')) return; // don't cache API
   event.respondWith(

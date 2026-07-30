@@ -70,13 +70,7 @@ function HomeTab({ user }) {
 
   const cs = status.currentStatus;
   const active = status.activeSession;
-  if (active) {
-  console.log("===== EMPLOYEE =====");
-  console.log("Raw:", active.startAt);
-  console.log("Parsed:", new Date(active.startAt));
-  console.log("ISO:", new Date(active.startAt).toISOString());
-  console.log("Now ISO:", new Date().toISOString());
-}
+
   const remaining = active?.startAt ? (() => {
     const limit = (active.type === 'lunch' ? 30 : 15) * 60 * 1000;
     const el = now - new Date(active.startAt).getTime();

@@ -166,13 +166,7 @@ function DashboardTab({ areaName }) {
   const [offset, setOffset] = useState(0);
 
   const now = useNow(offset);
-if (info?.startAt) {
-  console.log("===== SUPERVISOR =====");
-  console.log("Raw:", info.startAt);
-  console.log("Parsed:", new Date(info.startAt));
-  console.log("ISO:", new Date(info.startAt).toISOString());
-  console.log("Now ISO:", new Date().toISOString());
-}
+
   const load = async () => {
     try {
       const d = await api('/dashboard');
