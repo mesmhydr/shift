@@ -34,10 +34,10 @@ const fmtTime = (d) => {
 const fmtDateFull = (d) => new Date(d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
 const useNow = (offset = 0) => {
   const [n, setN] = useState(Date.now() - offset);
-  useEffect(() => { 
+  useEffect(() => {
     setN(Date.now() - offset);
-    const i = setInterval(() => setN(Date.now() - offset), 1000); 
-    return () => clearInterval(i); 
+    const i = setInterval(() => setN(Date.now() - offset), 1000);
+    return () => clearInterval(i);
   }, [offset]);
   return n;
 };
@@ -123,15 +123,15 @@ function BreakBadge({ type, info, now }) {
   if (info.status === 'Completed') {
     return (
       <div className="flex items-center gap-1 text-[12px] text-[#8E8E93]">
-  {icon}
-  <span>{label}</span>
-  <Check size={14} className="text-[#34C759]" />
-  <span>
-    {info.durationSec != null
-      ? `${Math.floor(info.durationSec / 60)}m ${info.durationSec % 60}s`
-      : `${info.durationMin} min`}
-  </span>
-</div>
+        {icon}
+        <span>{label}</span>
+        <Check size={14} className="text-[#34C759]" />
+        <span>
+          {info.durationSec != null
+            ? `${Math.floor(info.durationSec / 60)}m ${info.durationSec % 60}s`
+            : `${info.durationMin} min`}
+        </span>
+      </div>
     );
   }
   if (info.status === 'Running') {
@@ -184,64 +184,64 @@ function DashboardTab({ areaName }) {
   const act = async (fn) => { fx.tap(); try { await fn(); fx.success(); await load(); } catch (e) { fx.error(); alert(e.message); } };
 
   if (loading && !data) {
-  return (
-    <div className="flex h-[calc(100vh-80px)] flex-col items-center justify-center bg-[#F5F5F7]">
-      {/* Logo */}
-      <div
-        className="mb-5 flex h-20 w-20 animate-pulse items-center justify-center rounded-3xl bg-white shadow-sm"
-      >
-        <Image
-  src="/icon.svg"
-  alt="ShiftOps"
-  width={48}
-  height={48}
-  priority
-/>
+    return (
+      <div className="flex h-[calc(100vh-80px)] flex-col items-center justify-center bg-[#F5F5F7]">
+        {/* Logo */}
+        <div
+          className="mb-5 flex h-20 w-20 animate-pulse items-center justify-center rounded-3xl bg-white shadow-sm"
+        >
+          <Image
+            src="/icon.svg"
+            alt="ShiftOps"
+            width={48}
+            height={48}
+            priority
+          />
+        </div>
+
+        {/* App Name */}
+        <h1 className="text-[30px] font-bold tracking-tight text-[#1D1D1F]">
+          ShiftOps
+        </h1>
+
+        {/* Subtitle */}
+        <p className="mt-2 text-[15px] text-[#8E8E93]">
+          Preparing things for you...
+        </p>
+
+        {/* Animated dots */}
+        <div className="mt-8 flex gap-2">
+          <span
+            className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
+            style={{ animationDelay: "0ms" }}
+          />
+          <span
+            className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
+            style={{ animationDelay: "15ms" }}
+          />
+          <span
+            className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
+            style={{ animationDelay: "30ms" }}
+          />
+        </div>
       </div>
-
-      {/* App Name */}
-      <h1 className="text-[30px] font-bold tracking-tight text-[#1D1D1F]">
-        ShiftOps
-      </h1>
-
-      {/* Subtitle */}
-      <p className="mt-2 text-[15px] text-[#8E8E93]">
-        Preparing things for you...
-      </p>
-
-      {/* Animated dots */}
-      <div className="mt-8 flex gap-2">
-        <span
-          className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
-          style={{ animationDelay: "0ms" }}
-        />
-        <span
-          className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
-          style={{ animationDelay: "15ms" }}
-        />
-        <span
-          className="h-2 w-2 animate-bounce rounded-full bg-[#007AFF]"
-          style={{ animationDelay: "30ms" }}
-        />
-      </div>
-    </div>
-  );
-}
+    );
+  }
   const s = data?.summary || {};
 
   return (
     <div>
       <LargeTitle title="Today" />
-<div className="px-5 text-[15px] text-[#8E8E93] -mt-2">
-  {fmtDateFull(londonNow())} ·{" "}
-  {londonNow().toLocaleTimeString("en-GB", {
-    timeZone: "Europe/London",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false, // change to true if you want 9:42 PM instead of 21:42
-  })}{" "}
-  · {areaName}
-</div>
+      <div className="px-5 text-[15px] text-[#8E8E93] -mt-2">
+        {fmtDateFull(londonNow())} ·{" "}
+        {londonNow().toLocaleTimeString("en-GB", {
+          timeZone: "Europe/London",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false, // change to true if you want 9:42 PM instead of 21:42
+        })}{" "}
+        · {areaName}
+      </div>
       <div className="px-4 mt-5 grid grid-cols-3 gap-2">
         <StatCard label="Working" value={s.working ?? 0} color={C.green} />
         <StatCard label="On Break" value={s.onBreak ?? 0} color={C.blue} />
@@ -361,7 +361,7 @@ function RosterTab({ areaId }) {
       const map = {};
       dates.forEach(d => map[d.date] = d.count);
       setCalendar(map);
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => { loadCal(); }, [areaId, monthStr]);
@@ -373,14 +373,14 @@ function RosterTab({ areaId }) {
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
- const today = londonNow();
+  const today = londonNow();
 
   const dateKey = (d) => `${month.y}-${String(month.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-const todayKey = todayStr();
+  const todayKey = todayStr();
 
-const isToday = (d) => dateKey(d) === todayKey;
+  const isToday = (d) => dateKey(d) === todayKey;
 
-const isPast = (d) => dateKey(d) < todayKey;
+  const isPast = (d) => dateKey(d) < todayKey;
   const shiftMonth = (delta) => {
     let y = month.y, m = month.m + delta;
     if (m < 0) { m = 11; y--; }
@@ -521,297 +521,297 @@ function HistoryTab({ areaId }) {
   const [date, setDate] = useState(todayStr());
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const groupedRecords = useMemo(() => {
-  const groups = {};
-  
-  
+    const groups = {};
 
-  records.forEach((r) => {
-    const key = r.employeeName; // later change to employeeId if you add it
 
-    if (!groups[key]) {
-      groups[key] = {
-        employeeName: r.employeeName,
-        employeeId: r.employeeId,
-        lunch: null,
-        tea: null,
-      };
-    }
 
-    if (r.type === "lunch") groups[key].lunch = r;
-    if (r.type === "tea") groups[key].tea = r;
-  });
+    records.forEach((r) => {
+      const key = r.employeeName; // later change to employeeId if you add it
 
-  return Object.values(groups);
-}, [records]);
+      if (!groups[key]) {
+        groups[key] = {
+          employeeName: r.employeeName,
+          employeeId: r.employeeId,
+          lunch: null,
+          tea: null,
+        };
+      }
 
-const exportHistory = async () => {
-  const workbook = new ExcelJS.Workbook();
+      if (r.type === "lunch") groups[key].lunch = r;
+      if (r.type === "tea") groups[key].tea = r;
+    });
 
-  workbook.creator = "ShiftOps";
-  workbook.company = "ShiftOps";
-  workbook.created = new Date();
+    return Object.values(groups);
+  }, [records]);
 
-  const sheet = workbook.addWorksheet("Daily Report");
+  const exportHistory = async () => {
+    const workbook = new ExcelJS.Workbook();
 
-const lunchCompleted = groupedRecords.filter(r => r.lunch).length;
+    workbook.creator = "ShiftOps";
+    workbook.company = "ShiftOps";
+    workbook.created = new Date();
 
-const teaCompleted = groupedRecords.filter(r => r.tea).length;
+    const sheet = workbook.addWorksheet("Daily Report");
 
-const lunchExceeded = groupedRecords.filter(
-  r => r.lunch?.exceeded
-).length;
+    const lunchCompleted = groupedRecords.filter(r => r.lunch).length;
 
-const teaExceeded = groupedRecords.filter(
-  r => r.tea?.exceeded
-).length;
-  // We'll build the report here.
-  // ===== Report Title =====
-sheet.mergeCells("A1:H1");
-sheet.getCell("A1").value = "SHIFTOPS";
-sheet.getCell("A1").font = {
-  size: 24,
-  bold: true,
-  color: { argb: "FFFFFFFF" },
-};
-sheet.getCell("A1").alignment = {
-  horizontal: "center",
-  vertical: "middle",
-};
-sheet.getCell("A1").fill = {
-  type: "pattern",
-  pattern: "solid",
-  fgColor: { argb: "FF007AFF" },
-};
+    const teaCompleted = groupedRecords.filter(r => r.tea).length;
 
-sheet.mergeCells("A2:H2");
-sheet.getCell("A2").value = "Daily Break Report";
-sheet.getCell("A2").font = {
-  size: 14,
-  italic: true,
-};
-sheet.getCell("A2").alignment = {
-  horizontal: "center",
-};
+    const lunchExceeded = groupedRecords.filter(
+      r => r.lunch?.exceeded
+    ).length;
 
-sheet.addRow([]);
-
-const infoTitle = sheet.addRow(["Report Information"]);
-
-infoTitle.getCell(1).font = {
-  bold: true,
-  size: 14,
-};
-
-infoTitle.getCell(1).fill = {
-  type: "pattern",
-  pattern: "solid",
-  fgColor: { argb: "FFF3F4F6" },
-};
-
-sheet.addRow([
-  "Date",
-  new Date(date).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }),
-]);
-
-sheet.addRow([
-  "Generated",
-  new Date().toLocaleString("en-IN"),
-]);
-
-sheet.addRow([
-  "Employees",
-  groupedRecords.length,
-]);
-
-sheet.addRow([]);
-
-const summaryTitle = sheet.addRow(["Summary"]);
-
-summaryTitle.getCell(1).font = {
-  bold: true,
-  size: 14,
-};
-
-sheet.addRow([]);
-
-const labelRow = sheet.addRow([
-  "Employees",
-  "Lunch",
-  "Tea",
-  "Exceeded",
-]);
-
-const valueRow = sheet.addRow([
-  groupedRecords.length,
-  lunchCompleted,
-  teaCompleted,
-  lunchExceeded + teaExceeded,
-]);
-
-[labelRow, valueRow].forEach((row, idx) => {
-  row.height = idx === 0 ? 22 : 34;
-
-  row.eachCell((cell) => {
-    cell.alignment = {
+    const teaExceeded = groupedRecords.filter(
+      r => r.tea?.exceeded
+    ).length;
+    // We'll build the report here.
+    // ===== Report Title =====
+    sheet.mergeCells("A1:H1");
+    sheet.getCell("A1").value = "SHIFTOPS";
+    sheet.getCell("A1").font = {
+      size: 24,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    sheet.getCell("A1").alignment = {
       horizontal: "center",
       vertical: "middle",
     };
-
-    cell.border = {
-      top: { style: "thin", color: { argb: "FFE5E7EB" } },
-      bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
-      left: { style: "thin", color: { argb: "FFE5E7EB" } },
-      right: { style: "thin", color: { argb: "FFE5E7EB" } },
-    };
-
-    cell.fill = {
+    sheet.getCell("A1").fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: {
-        argb: idx === 0 ? "FFF3F4F6" : "FFFFFFFF",
-      },
+      fgColor: { argb: "FF007AFF" },
     };
-  });
-});
 
-valueRow.eachCell((cell) => {
-  cell.font = {
-    bold: true,
-    size: 20,
-  };
-});
+    sheet.mergeCells("A2:H2");
+    sheet.getCell("A2").value = "Daily Break Report";
+    sheet.getCell("A2").font = {
+      size: 14,
+      italic: true,
+    };
+    sheet.getCell("A2").alignment = {
+      horizontal: "center",
+    };
 
-sheet.addRow([]);
-const headerRow = sheet.addRow([
-  "Employee",
-  "Employee ID",
-  "Tea Duration",
-  "Lunch Duration",
-  "Lunch Start",
-  "Lunch End",
-  "Tea Start",
-  "Tea End",
-]);
+    sheet.addRow([]);
 
-headerRow.height = 24;
+    const infoTitle = sheet.addRow(["Report Information"]);
 
-headerRow.eachCell((cell) => {
-  cell.font = {
-    bold: true,
-    color: { argb: "FFFFFFFF" },
-  };
+    infoTitle.getCell(1).font = {
+      bold: true,
+      size: 14,
+    };
 
-  cell.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF007AFF" },
-  };
+    infoTitle.getCell(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFF3F4F6" },
+    };
 
-  cell.alignment = {
-    horizontal: "center",
-    vertical: "middle",
-  };
+    sheet.addRow([
+      "Date",
+      new Date(date).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    ]);
 
-  cell.border = {
-    top: { style: "thin" },
-    left: { style: "thin" },
-    bottom: { style: "thin" },
-    right: { style: "thin" },
-  };
-});
-groupedRecords.forEach((r, index) => {
-  const row = sheet.addRow([
-    r.employeeName,
-    r.employeeId,
-    r.tea
-      ? (r.tea.durationSec != null
-          ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
-          : `${r.tea.durationMin} min`)
-      : "-",
-     r.lunch
-      ? (r.lunch.durationSec != null
-          ? `${Math.floor(r.lunch.durationSec / 60)}m ${r.lunch.durationSec % 60}s`
-          : `${r.lunch.durationMin} min`)
-      : "-",
+    sheet.addRow([
+      "Generated",
+      new Date().toLocaleString("en-IN"),
+    ]);
 
-    r.lunch ? fmtTime(r.lunch.startAt) : "-",
-    r.lunch ? fmtTime(r.lunch.endAt) : "-",
-   
-    r.tea ? fmtTime(r.tea.startAt) : "-",
-    r.tea ? fmtTime(r.tea.endAt) : "-",
-  ]);
+    sheet.addRow([
+      "Employees",
+      groupedRecords.length,
+    ]);
 
-  // Alternate row colors
-  if (index % 2 === 0) {
-    row.eachCell((cell) => {
+    sheet.addRow([]);
+
+    const summaryTitle = sheet.addRow(["Summary"]);
+
+    summaryTitle.getCell(1).font = {
+      bold: true,
+      size: 14,
+    };
+
+    sheet.addRow([]);
+
+    const labelRow = sheet.addRow([
+      "Employees",
+      "Lunch",
+      "Tea",
+      "Exceeded",
+    ]);
+
+    const valueRow = sheet.addRow([
+      groupedRecords.length,
+      lunchCompleted,
+      teaCompleted,
+      lunchExceeded + teaExceeded,
+    ]);
+
+    [labelRow, valueRow].forEach((row, idx) => {
+      row.height = idx === 0 ? 22 : 34;
+
+      row.eachCell((cell) => {
+        cell.alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE5E7EB" } },
+          bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFE5E7EB" } },
+          right: { style: "thin", color: { argb: "FFE5E7EB" } },
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: idx === 0 ? "FFF3F4F6" : "FFFFFFFF",
+          },
+        };
+      });
+    });
+
+    valueRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+        size: 20,
+      };
+    });
+
+    sheet.addRow([]);
+    const headerRow = sheet.addRow([
+      "Employee",
+      "Employee ID",
+      "Tea Duration",
+      "Lunch Duration",
+      "Lunch Start",
+      "Lunch End",
+      "Tea Start",
+      "Tea End",
+    ]);
+
+    headerRow.height = 24;
+
+    headerRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+        color: { argb: "FFFFFFFF" },
+      };
+
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFF8F9FA" },
+        fgColor: { argb: "FF007AFF" },
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+      };
+
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
     });
-  }
+    groupedRecords.forEach((r, index) => {
+      const row = sheet.addRow([
+        r.employeeName,
+        r.employeeId,
+        r.tea
+          ? (r.tea.durationSec != null
+            ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
+            : `${r.tea.durationMin} min`)
+          : "-",
+        r.lunch
+          ? (r.lunch.durationSec != null
+            ? `${Math.floor(r.lunch.durationSec / 60)}m ${r.lunch.durationSec % 60}s`
+            : `${r.lunch.durationMin} min`)
+          : "-",
 
-  // Borders + alignment
-  row.eachCell((cell) => {
-    cell.border = {
-      top: { style: "thin", color: { argb: "FFE5E7EB" } },
-      bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
-      left: { style: "thin", color: { argb: "FFE5E7EB" } },
-      right: { style: "thin", color: { argb: "FFE5E7EB" } },
+        r.lunch ? fmtTime(r.lunch.startAt) : "-",
+        r.lunch ? fmtTime(r.lunch.endAt) : "-",
+
+        r.tea ? fmtTime(r.tea.startAt) : "-",
+        r.tea ? fmtTime(r.tea.endAt) : "-",
+      ]);
+
+      // Alternate row colors
+      if (index % 2 === 0) {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF8F9FA" },
+          };
+        });
+      }
+
+      // Borders + alignment
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE5E7EB" } },
+          bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFE5E7EB" } },
+          right: { style: "thin", color: { argb: "FFE5E7EB" } },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: cell.col <= 2 ? "left" : "center",
+        };
+      });
+    });
+
+    sheet.columns = [
+      { width: 24 },
+      { width: 20 },
+      { width: 18 },
+      { width: 18 },
+      { width: 16 },
+      { width: 16 },
+      { width: 16 },
+      { width: 16 },
+    ];
+
+    sheet.views = [
+      {
+        showGridLines: false,
+        state: "frozen",
+        ySplit: headerRow.number,
+      },
+    ];
+
+    sheet.autoFilter = {
+      from: {
+        row: headerRow.number,
+        column: 1,
+      },
+      to: {
+        row: headerRow.number,
+        column: 8,
+      },
     };
 
-    cell.alignment = {
-      vertical: "middle",
-      horizontal: cell.col <= 2 ? "left" : "center",
-    };
-  });
-});
 
-sheet.columns = [
-  { width: 24 },
-  { width: 20 },
-  { width: 18 },
-  { width: 18 },
-  { width: 16 },
-  { width: 16 },
-  { width: 16 },
-  { width: 16 },
-];
+    const buffer = await workbook.xlsx.writeBuffer();
 
-sheet.views = [
-  {
-    showGridLines: false,
-    state: "frozen",
-    ySplit: headerRow.number,
-  },
-];
-
-sheet.autoFilter = {
-  from: {
-    row: headerRow.number,
-    column: 1,
-  },
-  to: {
-    row: headerRow.number,
-    column: 8,
-  },
-};
-
-
-  const buffer = await workbook.xlsx.writeBuffer();
-
-  saveAs(
-    new Blob([buffer]),
-    `ShiftOps-Daily-Report-${date}.xlsx`
-  );
-};
+    saveAs(
+      new Blob([buffer]),
+      `ShiftOps-Daily-Report-${date}.xlsx`
+    );
+  };
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -829,12 +829,12 @@ sheet.autoFilter = {
         <CalendarDays size={20} className="text-[#007AFF]" />
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
           className="flex-1 bg-transparent text-[16px] outline-none text-[#1D1D1F]" />
-          <button
-  onClick={exportHistory}
-  className="px-3 py-2 rounded-xl bg-[#007AFF] text-white text-[14px] font-medium"
->
-  Export
-</button>
+        <button
+          onClick={exportHistory}
+          className="px-3 py-2 rounded-xl bg-[#007AFF] text-white text-[14px] font-medium"
+        >
+          Export
+        </button>
       </div>
       <Section header={`${groupedRecords.length} employees`}>
         {loading && <div className="p-6 text-center text-[#8E8E93]">Loading…</div>}
@@ -843,10 +843,10 @@ sheet.autoFilter = {
         )}
         {groupedRecords.map((r, i) => (
           <div
-  key={r.employeeName}
-  className="px-4 py-3.5"
-  style={{ borderTop: i > 0 ? `1px solid ${C.sep}` : undefined }}
->
+            key={r.employeeName}
+            className="px-4 py-3.5"
+            style={{ borderTop: i > 0 ? `1px solid ${C.sep}` : undefined }}
+          >
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-[16px] font-medium text-[#1D1D1F]">{r.employeeName}</div>
@@ -854,43 +854,43 @@ sheet.autoFilter = {
               </div>
               <div className="mt-3 space-y-3">
 
-  {r.lunch && (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <UtensilsCrossed size={14} color={C.orange} />
-        <span className="text-[15px] font-medium">Lunch</span>
-      </div>
-      <div className="text-[13px] text-[#8E8E93] flex items-center gap-2">
-  <span>{fmtTime(r.lunch.startAt)} – {fmtTime(r.lunch.endAt)}</span>
-  <span>•</span>
-  <span className={r.lunch.exceeded ? "text-[#FF3B30]" : ""}>
-    {r.lunch.durationSec != null
-      ? `${Math.floor(r.lunch.durationSec / 60)}m ${r.lunch.durationSec % 60}s`
-      : `${r.lunch.durationMin} min`}
-  </span>
-</div>
-    </div>
-  )}
+                {r.lunch && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UtensilsCrossed size={14} color={C.orange} />
+                      <span className="text-[15px] font-medium">Lunch</span>
+                    </div>
+                    <div className="text-[13px] text-[#8E8E93] flex items-center gap-2">
+                      <span>{fmtTime(r.lunch.startAt)} – {fmtTime(r.lunch.endAt)}</span>
+                      <span>•</span>
+                      <span className={r.lunch.exceeded ? "text-[#FF3B30]" : ""}>
+                        {r.lunch.durationSec != null
+                          ? `${Math.floor(r.lunch.durationSec / 60)}m ${r.lunch.durationSec % 60}s`
+                          : `${r.lunch.durationMin} min`}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-  {r.tea && (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Coffee size={14} color={C.green} />
-        <span className="text-[15px] font-medium">Tea</span>
-      </div>
-      <div className="text-[13px] text-[#8E8E93] flex items-center gap-2">
-  <span>{fmtTime(r.tea.startAt)} – {fmtTime(r.tea.endAt)}</span>
-  <span>•</span>
-  <span className={r.tea.exceeded ? "text-[#FF3B30]" : ""}>
-    {r.tea.durationSec != null
-      ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
-      : `${r.tea.durationMin} min`}
-  </span>
-</div>
-    </div>
-  )}
+                {r.tea && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Coffee size={14} color={C.green} />
+                      <span className="text-[15px] font-medium">Tea</span>
+                    </div>
+                    <div className="text-[13px] text-[#8E8E93] flex items-center gap-2">
+                      <span>{fmtTime(r.tea.startAt)} – {fmtTime(r.tea.endAt)}</span>
+                      <span>•</span>
+                      <span className={r.tea.exceeded ? "text-[#FF3B30]" : ""}>
+                        {r.tea.durationSec != null
+                          ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
+                          : `${r.tea.durationMin} min`}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-</div>
+              </div>
             </div>
           </div>
         ))}
@@ -978,12 +978,12 @@ function SettingsTab({ user, onLogout, refreshArea }) {
                 if (!np) return;
                 try {
                   await api(`/employees/${r.id}/reset-password`, {
-  method: 'POST',
-  body: {
-    newPassword: np,
-    requestId: r.id,
-  },
-});
+                    method: 'POST',
+                    body: {
+                      newPassword: np,
+                      requestId: r.id,
+                    },
+                  });
                   await loadAll();
                 } catch (e) { alert(e.message); }
               }} className="text-[15px] font-semibold text-[#007AFF]">Reset Password</button>
@@ -1054,43 +1054,43 @@ function SettingsTab({ user, onLogout, refreshArea }) {
       </Section>
 
       <Section header="About">
-  <Row>
-    <span className="flex-1 text-[16px]">Version</span>
-    <span className="text-[#8E8E93]">1.0.0</span>
-  </Row>
+        <Row>
+          <span className="flex-1 text-[16px]">Version</span>
+          <span className="text-[#8E8E93]">1.0.0</span>
+        </Row>
 
-  <Row
-    onClick={() =>
-      window.location.href =
-        "mailto:support@shiftops.app?subject=ShiftOps%20Bug%20Report&body=Device:%0ABrowser:%0AVersion:%201.0.0%0A%0ADescribe%20the%20issue:%0A%0ASteps%20to%20reproduce:%0A%0AExpected%20result:%0A%0AActual%20result:"
-    }
-  >
-    <span className="flex-1 text-[16px]">Report a Bug</span>
-    <ChevronRight size={18} className="text-[#C7C7CC]" />
-  </Row>
+        <Row
+          onClick={() =>
+            window.location.href =
+            "mailto:support@shiftops.app?subject=ShiftOps%20Bug%20Report&body=Device:%0ABrowser:%0AVersion:%201.0.0%0A%0ADescribe%20the%20issue:%0A%0ASteps%20to%20reproduce:%0A%0AExpected%20result:%0A%0AActual%20result:"
+          }
+        >
+          <span className="flex-1 text-[16px]">Report a Bug</span>
+          <ChevronRight size={18} className="text-[#C7C7CC]" />
+        </Row>
 
-  <Row onClick={() => window.location.href = "/privacy"}>
+        {/*<Row onClick={() => window.location.href = "/privacy"}>
     <span className="flex-1 text-[16px]">Privacy Policy</span>
     <ChevronRight size={18} className="text-[#C7C7CC]" />
-  </Row>
-</Section>
+  </Row>*/}
+      </Section>
 
       <div className="mx-4 mt-6">
         <button
-  onClick={() => {
-    const confirmed = window.confirm(
-      "Are you sure you want to log out?"
-    );
+          onClick={() => {
+            const confirmed = window.confirm(
+              "Are you sure you want to log out?"
+            );
 
-    if (!confirmed) return;
+            if (!confirmed) return;
 
-    onLogout();
-  }}
-  className="w-full bg-white rounded-2xl py-3.5 text-[17px] font-semibold text-[#FF3B30] flex items-center justify-center gap-2"
->
-  <LogOut size={18} />
-  Log Out
-</button>
+            onLogout();
+          }}
+          className="w-full bg-white rounded-2xl py-3.5 text-[17px] font-semibold text-[#FF3B30] flex items-center justify-center gap-2"
+        >
+          <LogOut size={18} />
+          Log Out
+        </button>
       </div>
 
       <div className="h-24" />
@@ -1139,11 +1139,11 @@ function EditRow({ label, value, onSave }) {
 function EmployeeEdit({ emp, onClose }) {
   const isNew = !emp;
   const [f, setF] = useState({
-  name: emp?.name || '',
-  employeeId: emp?.employeeId || '',
-  role: emp?.role || 'employee',
-  password: '',
-});
+    name: emp?.name || '',
+    employeeId: emp?.employeeId || '',
+    role: emp?.role || 'employee',
+    password: '',
+  });
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -1183,53 +1183,53 @@ function EmployeeEdit({ emp, onClose }) {
         </div>
         <div className="p-4 space-y-3">
           <FieldGroup>
-  <Field
-    label="Name"
-    value={f.name}
-    onChange={(v) => setF({ ...f, name: v })}
-  />
+            <Field
+              label="Name"
+              value={f.name}
+              onChange={(v) => setF({ ...f, name: v })}
+            />
 
-  <Field
-    label="Employee ID"
-    value={f.employeeId}
-    onChange={(v) =>
-      setF({
-        ...f,
-        employeeId: v.toUpperCase(),
-      })
-    }
-  />
+            <Field
+              label="Employee ID"
+              value={f.employeeId}
+              onChange={(v) =>
+                setF({
+                  ...f,
+                  employeeId: v.toUpperCase(),
+                })
+              }
+            />
 
-  {isNew && (
-    <Field
-      label="Password"
-      type="password"
-      value={f.password}
-      onChange={(v) => setF({ ...f, password: v })}
-    />
-  )}
-</FieldGroup>
+            {isNew && (
+              <Field
+                label="Password"
+                type="password"
+                value={f.password}
+                onChange={(v) => setF({ ...f, password: v })}
+              />
+            )}
+          </FieldGroup>
           <FieldGroup>
-  <div className="px-4 py-3 flex items-center gap-3 border-t">
-  <div className="text-[15px] text-[#8E8E93] w-24">
-    Role
-  </div>
+            <div className="px-4 py-3 flex items-center gap-3 border-t">
+              <div className="text-[15px] text-[#8E8E93] w-24">
+                Role
+              </div>
 
-  <select
-    value={f.role}
-    onChange={(e) =>
-      setF({
-        ...f,
-        role: e.target.value,
-      })
-    }
-    className="flex-1 bg-transparent outline-none text-[16px]"
-  >
-    <option value="employee">Employee</option>
-    <option value="supervisor">Supervisor</option>
-  </select>
-</div>
-</FieldGroup>
+              <select
+                value={f.role}
+                onChange={(e) =>
+                  setF({
+                    ...f,
+                    role: e.target.value,
+                  })
+                }
+                className="flex-1 bg-transparent outline-none text-[16px]"
+              >
+                <option value="employee">Employee</option>
+                <option value="supervisor">Supervisor</option>
+              </select>
+            </div>
+          </FieldGroup>
           {!isNew && (
             <>
               <button onClick={resetPw} className="w-full bg-white border rounded-2xl py-3 text-[16px] font-medium text-[#007AFF] flex items-center justify-center gap-2" style={{ borderColor: C.sep }}>
