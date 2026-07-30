@@ -5,6 +5,8 @@ import { api } from '@/lib/shiftops-client';
 import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
 import { BottomNav } from '@/components/shiftops/Supervisor';
 import { Home as HomeIcon, Bell, User, Coffee, UtensilsCrossed, LogOut, KeyRound, Check, Vibrate, Volume2 } from 'lucide-react';
+import usePWAInstall from "@/hooks/usePWAInstall";
+import { Download } from "lucide-react";
 
 const C = {
   bg: '#F5F5F7', text: '#1D1D1F', muted: '#8E8E93', sep: 'rgba(0,0,0,0.06)',
@@ -13,10 +15,10 @@ const C = {
 
 const useNow = (offset = 0) => {
   const [n, setN] = useState(Date.now() - offset);
-  useEffect(() => { 
+  useEffect(() => {
     setN(Date.now() - offset);
-    const i = setInterval(() => setN(Date.now() - offset), 1000); 
-    return () => clearInterval(i); 
+    const i = setInterval(() => setN(Date.now() - offset), 1000);
+    return () => clearInterval(i);
   }, [offset]);
   return n;
 };
@@ -37,10 +39,10 @@ function HomeTab({ user }) {
   const now = useNow(offset);
 
   const load = async () => {
-    try { 
-      const s = await api('/my/status'); 
+    try {
+      const s = await api('/my/status');
       if (s.serverTime) setOffset(Date.now() - new Date(s.serverTime).getTime());
-      setStatus(s); 
+      setStatus(s);
     } finally { setLoading(false); }
   };
   useEffect(() => {
@@ -219,6 +221,12 @@ function ProfileTab({ user, onLogout, refreshUser }) {
   const [cur, setCur] = useState(''); const [np, setNp] = useState(''); const [busy, setBusy] = useState(false);
   const [hap, setHap] = useState(true);
   const [snd, setSnd] = useState(true);
+  const {
+    install,
+    canInstall,
+    isInstalled,
+    isIOS,
+  } = usePWAInstall();
   useEffect(() => { setHap(getHaptics()); setSnd(getSounds()); }, []);
 
   const changePw = async () => {
@@ -254,7 +262,7 @@ function ProfileTab({ user, onLogout, refreshUser }) {
       <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Details</div>
       <div className="mx-4 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
         <InfoRow label="Employee ID" value={user.employeeId} first />
-<InfoRow label="Role" value={user.role} />
+        <InfoRow label="Role" value={user.role} />
       </div>
 
       <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Preferences</div>
@@ -297,6 +305,53 @@ function ProfileTab({ user, onLogout, refreshUser }) {
           <span className="text-[16px] text-[#1D1D1F]">Request Password Reset</span>
         </button>
       </div>
+
+      {!isInstalled && canInstall && (
+        <>
+          <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">
+            App
+          </div>
+
+          <div
+            className="mx-4 bg-white rounded-2xl overflow-hidden"
+            style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}
+          >
+            <button
+              onClick={install}
+              className="w-full px-4 py-3.5 flex items-center gap-3 active:bg-black/5"
+            >
+              <Download size={18} className="text-[#007AFF]" />
+              <div className="text-left">
+                <div className="text-[16px] text-[#1D1D1F]">
+                  Install ShiftOps
+                </div>
+                <div className="text-[13px] text-[#8E8E93]">
+                  Install this app on your device
+                </div>
+              </div>
+            </button>
+          </div>
+        </>
+      )}
+      {!isInstalled && isIOS && !canInstall && (
+        <>
+          <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">
+            App
+          </div>
+
+          <div
+            className="mx-4 bg-white rounded-2xl p-4"
+            style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}
+          >
+            <div className="font-medium">Install ShiftOps</div>
+
+            <div className="text-[14px] text-[#8E8E93] mt-1">
+              Tap the Share button in Safari, then choose
+              <strong> Add to Home Screen</strong>.
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="mx-4 mt-6">
         <button onClick={onLogout} className="w-full bg-white rounded-2xl py-3.5 text-[17px] font-semibold text-[#FF3B30] flex items-center justify-center gap-2">
