@@ -11,9 +11,13 @@ const C = {
   blue: '#007AFF', green: '#34C759', orange: '#FF9500', red: '#FF3B30',
 };
 
-const useNow = () => {
-  const [n, setN] = useState(Date.now());
-  useEffect(() => { const i = setInterval(() => setN(Date.now()), 1000); return () => clearInterval(i); }, []);
+const useNow = (offset = 0) => {
+  const [n, setN] = useState(Date.now() - offset);
+  useEffect(() => { 
+    setN(Date.now() - offset);
+    const i = setInterval(() => setN(Date.now() - offset), 1000); 
+    return () => clearInterval(i); 
+  }, [offset]);
   return n;
 };
 
@@ -29,10 +33,15 @@ function LargeTitle({ title, subtitle }) {
 function HomeTab({ user }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  const now = useNow();
+  const [offset, setOffset] = useState(0);
+  const now = useNow(offset);
 
   const load = async () => {
-    try { setStatus(await api('/my/status')); } finally { setLoading(false); }
+    try { 
+      const s = await api('/my/status'); 
+      if (s.serverTime) setOffset(Date.now() - new Date(s.serverTime).getTime());
+      setStatus(s); 
+    } finally { setLoading(false); }
   };
   useEffect(() => {
     load();
@@ -61,6 +70,13 @@ function HomeTab({ user }) {
 
   const cs = status.currentStatus;
   const active = status.activeSession;
+  if (active) {
+  console.log("===== EMPLOYEE =====");
+  console.log("Raw:", active.startAt);
+  console.log("Parsed:", new Date(active.startAt));
+  console.log("ISO:", new Date(active.startAt).toISOString());
+  console.log("Now ISO:", new Date().toISOString());
+}
   const remaining = active?.startAt ? (() => {
     const limit = (active.type === 'lunch' ? 30 : 15) * 60 * 1000;
     const el = now - new Date(active.startAt).getTime();

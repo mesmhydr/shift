@@ -459,7 +459,7 @@ if (body.role !== undefined)
         lunchCompleted: rows.filter(r => r.lunch.status === 'Completed').length,
         teaCompleted: rows.filter(r => r.tea.status === 'Completed').length,
       };
-      return json({ areaId, date, summary, employees: rows });
+      return json({ areaId, date, summary, employees: rows, serverTime: new Date() });
     }
 
     // ---------- EMPLOYEE SELF STATUS ----------
@@ -486,6 +486,7 @@ if (body.role !== undefined)
           requireBreakStartApproval: settings.requireBreakStartApproval,
           requireBreakReturnApproval: settings.requireBreakReturnApproval,
         },
+        serverTime: new Date(),
       });
     }
 

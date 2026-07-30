@@ -32,9 +32,13 @@ const fmtTime = (d) => {
   return t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 const fmtDateFull = (d) => new Date(d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-const useNow = () => {
-  const [n, setN] = useState(Date.now());
-  useEffect(() => { const i = setInterval(() => setN(Date.now()), 1000); return () => clearInterval(i); }, []);
+const useNow = (offset = 0) => {
+  const [n, setN] = useState(Date.now() - offset);
+  useEffect(() => { 
+    setN(Date.now() - offset);
+    const i = setInterval(() => setN(Date.now() - offset), 1000); 
+    return () => clearInterval(i); 
+  }, [offset]);
   return n;
 };
 const elapsed = (start, now) => {
@@ -104,8 +108,7 @@ function StatusPill({ status }) {
   );
 }
 
-function BreakBadge({ type, info }) {
-  const now = useNow();
+function BreakBadge({ type, info, now }) {
   const icon = type === 'lunch' ? <UtensilsCrossed size={14} /> : <Coffee size={14} />;
   const label = type === 'lunch' ? 'Lunch' : 'Tea';
   const color = type === 'lunch' ? C.orange : C.green;
@@ -160,12 +163,20 @@ function BreakBadge({ type, info }) {
 function DashboardTab({ areaName }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [offset, setOffset] = useState(0);
 
-  const now = useNow();
-
+  const now = useNow(offset);
+if (info?.startAt) {
+  console.log("===== SUPERVISOR =====");
+  console.log("Raw:", info.startAt);
+  console.log("Parsed:", new Date(info.startAt));
+  console.log("ISO:", new Date(info.startAt).toISOString());
+  console.log("Now ISO:", new Date().toISOString());
+}
   const load = async () => {
     try {
       const d = await api('/dashboard');
+      if (d.serverTime) setOffset(Date.now() - new Date(d.serverTime).getTime());
       setData(d);
     } finally { setLoading(false); }
   };
@@ -261,8 +272,8 @@ function DashboardTab({ areaName }) {
                 </div>
                 <div className="text-[13px] text-[#8E8E93] mt-0.5">{e.employeeId} · {e.role}</div>
                 <div className="flex items-center gap-4 mt-2">
-                  <BreakBadge type="lunch" info={e.lunch} />
-                  <BreakBadge type="tea" info={e.tea} />
+                  <BreakBadge type="lunch" info={e.lunch} now={now} />
+                  <BreakBadge type="tea" info={e.tea} now={now} />
                 </div>
               </div>
             </div>
