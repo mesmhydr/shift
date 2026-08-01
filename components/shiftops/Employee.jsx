@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/shiftops-client';
 import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
 import { BottomNav } from '@/components/shiftops/Supervisor';
-import { Home as HomeIcon, Bell, User, Coffee, UtensilsCrossed, LogOut, KeyRound, Check, Vibrate, Volume2 } from 'lucide-react';
+import { Home as HomeIcon, Bell, User, Coffee, UtensilsCrossed, LogOut, Check, Vibrate, Volume2 } from 'lucide-react';
 import usePWAInstall from "@/hooks/usePWAInstall";
 import { Download } from "lucide-react";
 
@@ -217,8 +217,6 @@ function NotificationsTab() {
 }
 
 function ProfileTab({ user, onLogout, refreshUser }) {
-  const [showChange, setShowChange] = useState(false);
-  const [cur, setCur] = useState(''); const [np, setNp] = useState(''); const [busy, setBusy] = useState(false);
   const [hap, setHap] = useState(true);
   const [snd, setSnd] = useState(true);
   const {
@@ -228,22 +226,6 @@ function ProfileTab({ user, onLogout, refreshUser }) {
     isIOS,
   } = usePWAInstall();
   useEffect(() => { setHap(getHaptics()); setSnd(getSounds()); }, []);
-
-  const changePw = async () => {
-    setBusy(true);
-    try {
-      await api('/auth/change-password', { method: 'POST', body: { currentPassword: cur, newPassword: np } });
-      alert('Password changed');
-      setShowChange(false); setCur(''); setNp('');
-    } catch (e) { alert(e.message); }
-    finally { setBusy(false); }
-  };
-
-  const requestReset = async () => {
-    if (!confirm('Send a password reset request to your supervisor?')) return;
-    await api('/auth/request-password-reset', { method: 'POST' });
-    alert('Request sent to supervisor.');
-  };
 
   return (
     <div>
@@ -261,7 +243,7 @@ function ProfileTab({ user, onLogout, refreshUser }) {
 
       <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Details</div>
       <div className="mx-4 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-        <InfoRow label="Employee ID" value={user.employeeId} first />
+        <InfoRow label="Username" value={user.username} first />
         <InfoRow label="Role" value={user.role} />
       </div>
 
@@ -291,18 +273,6 @@ function ProfileTab({ user, onLogout, refreshUser }) {
           className="w-full px-4 py-3.5 flex items-center gap-3 active:bg-black/5" style={{ borderTop: `1px solid ${C.sep}` }}>
           <Bell size={18} className="text-[#007AFF]" />
           <span className="text-[16px] text-[#007AFF]">Enable Browser Notifications</span>
-        </button>
-      </div>
-
-      <div className="mt-6 px-5 pb-2 text-[13px] uppercase tracking-wide text-[#8E8E93] font-medium">Security</div>
-      <div className="mx-4 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-        <button onClick={() => setShowChange(true)} className="w-full px-4 py-3.5 flex items-center gap-3 active:bg-black/5">
-          <KeyRound size={18} className="text-[#007AFF]" />
-          <span className="text-[16px] text-[#007AFF]">Change Password</span>
-        </button>
-        <button onClick={requestReset} className="w-full px-4 py-3.5 flex items-center gap-3 active:bg-black/5" style={{ borderTop: `1px solid ${C.sep}` }}>
-          <KeyRound size={18} className="text-[#8E8E93]" />
-          <span className="text-[16px] text-[#1D1D1F]">Request Password Reset</span>
         </button>
       </div>
 
@@ -360,26 +330,6 @@ function ProfileTab({ user, onLogout, refreshUser }) {
       </div>
 
       <div className="h-24" />
-
-      {showChange && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end" onClick={() => setShowChange(false)}>
-          <div className="w-full bg-white rounded-t-3xl" onClick={e => e.stopPropagation()}>
-            <div className="p-4 flex items-center justify-between border-b" style={{ borderColor: C.sep }}>
-              <button onClick={() => setShowChange(false)} className="text-[17px] text-[#007AFF]">Cancel</button>
-              <div className="text-[17px] font-semibold">Change Password</div>
-              <button onClick={changePw} disabled={busy} className="text-[17px] font-semibold text-[#007AFF] disabled:opacity-50">Save</button>
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: C.sep }}>
-                <input type="password" placeholder="Current password" value={cur} onChange={e => setCur(e.target.value)}
-                  className="w-full px-4 py-3 outline-none text-[16px]" />
-                <input type="password" placeholder="New password" value={np} onChange={e => setNp(e.target.value)}
-                  className="w-full px-4 py-3 outline-none text-[16px] border-t" style={{ borderColor: C.sep }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

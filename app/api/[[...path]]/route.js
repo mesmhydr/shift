@@ -1,7 +1,7 @@
   import { NextResponse } from 'next/server';
   import { v4 as uuidv4 } from 'uuid';
   import { getDb } from '@/lib/shiftops/db';
-  import { hashPassword, verifyPassword, newToken, getUserFromRequest } from '@/lib/shiftops/auth';
+  import { newToken, getUserFromRequest } from '@/lib/shiftops/auth';
   import { todayStr } from "@/lib/date";
   import { londonNow } from "@/lib/date";
 
@@ -17,22 +17,27 @@
   async function ensureSeed() {
     const db = await getDb();
     const existing = await db.collection('users').findOne({ role: 'supervisor' });
-    if (existing) return { seeded: false };
+    if (existing) {
+      if (!existing.username) {
+        await db.collection('users').updateOne(
+          { id: existing.id },
+          { $set: { username: 'admin' }, $unset: { employeeId: "", password: "" } }
+        );
+      }
+      return { seeded: false };
+    }
 
     const areaId = uuidv4();
     await db.collection('areas').insertOne({ id: areaId, name: 'Lobby', createdAt: new Date() });
 
     const supervisorId = uuidv4();
     await db.collection("users").insertOne({
-    id: supervisorId,
-    employeeId: "ADMIN001",
-    password: hashPassword("admin123"),
-    name: "Supervisor",
-    role: "supervisor",
-    createdAt: new Date(),
-  });
-
-    
+      id: supervisorId,
+      username: "admin",
+      name: "Supervisor",
+      role: "supervisor",
+      createdAt: new Date(),
+    });
 
     // Settings
     await db.collection('settings').insertOne({
@@ -46,7 +51,6 @@
       pushNotifications: true,
       breakReminder: true,
       approvalNotifications: true,
-      passwordRequests: true,
     });
 
     return { seeded: true };
@@ -165,41 +169,43 @@
     }
 
     // ---------- AUTH ----------
+    // ---------- AUTH ----------
     if (p0 === "auth" && p1 === "login" && method === "POST") {
-    const { employeeId, password } = body;
+      const { username } = body;
 
-    if (!employeeId || !password) {
-      return json(
-        { error: "Employee ID and password required" },
-        400
-      );
+      if (!username) {
+        return json(
+          { error: "Username required" },
+          400
+        );
+      }
+
+      const cleanUsername = String(username).trim().toLowerCase();
+
+      const user = await db.collection("users").findOne({
+        username: cleanUsername,
+      });
+
+      if (!user) {
+        return json({ error: "User not found" }, 404);
+      }
+
+      const token = newToken();
+
+      await db.collection("sessions").insertOne({
+        token,
+        userId: user.id,
+        createdAt: new Date(),
+      });
+
+      return json({
+        token,
+        user: {
+          ...user,
+          _id: undefined,
+        },
+      });
     }
-
-    const user = await db.collection("users").findOne({
-      employeeId: String(employeeId).trim().toUpperCase(),
-    });
-
-    if (!user || !verifyPassword(password, user.password)) {
-      return json({ error: "Invalid credentials" }, 401);
-    }
-
-    const token = newToken();
-
-    await db.collection("sessions").insertOne({
-      token,
-      userId: user.id,
-      createdAt: new Date(),
-    });
-
-    return json({
-      token,
-      user: {
-        ...user,
-        password: undefined,
-        _id: undefined,
-      },
-    });
-  }
 
     // Everything below requires auth
     const me = await getUserFromRequest(request);
@@ -215,23 +221,6 @@
       const auth = request.headers.get('authorization');
       const token = auth?.replace(/^Bearer\s+/i, '').trim();
       if (token) await db.collection('sessions').deleteOne({ token });
-      return json({ ok: true });
-    }
-
-    if (p0 === 'auth' && p1 === 'change-password' && method === 'POST') {
-      const { currentPassword, newPassword } = body;
-      const user = await db.collection('users').findOne({ id: me.id });
-      if (!verifyPassword(currentPassword, user.password)) return json({ error: 'Current password is incorrect' }, 400);
-      if (!newPassword || newPassword.length < 4) return json({ error: 'New password too short' }, 400);
-      await db.collection('users').updateOne({ id: me.id }, { $set: { password: hashPassword(newPassword) } });
-      return json({ ok: true });
-    }
-
-    if (p0 === 'auth' && p1 === 'request-password-reset' && method === 'POST') {
-      await db.collection('password_requests').insertOne({
-        id: uuidv4(), employeeId: me.id, status: 'pending', requestedAt: new Date(),
-      });
-      await notifySupervisors('Password Reset Request', `${me.name} requested a password reset`, { employeeId: me.id });
       return json({ ok: true });
     }
 
@@ -272,68 +261,82 @@
     }
 
     // ---------- EMPLOYEES ----------
+    // ---------- EMPLOYEES ----------
     if (p0 === 'employees' && method === 'GET') {
       const emps = await db.collection('users').find({ role: 'employee' }).toArray();
       return json({
         employees: emps.map(e => ({
-  id: e.id,
-  name: e.name,
-  employeeId: e.employeeId,
-  role: e.role,
-})),
+          id: e.id,
+          name: e.name,
+          username: e.username,
+          role: e.role,
+        })),
       });
     }
     if (p0 === 'employees' && !p1 && method === 'POST') {
-  if (me.role !== 'supervisor')
-    return json({ error: 'Forbidden' }, 403);
+      if (me.role !== 'supervisor')
+        return json({ error: 'Forbidden' }, 403);
 
-  const { name, employeeId, password, role } = body;
+      const { name, username, role } = body;
 
-  if (!name || !employeeId || !password) {
-    return json(
-      { error: 'Name, Employee ID and Password required' },
-      400
-    );
-  }
+      if (!name || !username) {
+        return json(
+          { error: 'Name and Username required' },
+          400
+        );
+      }
 
-  const normalizedId = employeeId.trim().toUpperCase();
+      const cleanUsername = String(username).trim().toLowerCase();
 
-  const existing = await db.collection('users').findOne({
-    employeeId: normalizedId,
-  });
+      const existing = await db.collection('users').findOne({
+        username: cleanUsername,
+      });
 
-  if (existing) {
-    return json(
-      { error: 'Employee ID already exists' },
-      400
-    );
-  }
+      if (existing) {
+        return json(
+          { error: 'Username already exists' },
+          400
+        );
+      }
 
-  const id = uuidv4();
+      const id = uuidv4();
 
-  await db.collection('users').insertOne({
-    id,
-    name,
-    employeeId: normalizedId,
-    password: hashPassword(password),
-    role: role || 'employee',
-    createdAt: new Date(),
-  });
+      await db.collection('users').insertOne({
+        id,
+        name,
+        username: cleanUsername,
+        role: role || 'employee',
+        createdAt: new Date(),
+      });
 
-  return json({ id });
-}
+      return json({ id });
+    }
     if (p0 === 'employees' && p1 && method === 'PATCH') {
       if (me.role !== 'supervisor') return json({ error: 'Forbidden' }, 403);
       const upd = {};
 
-if (body.name !== undefined)
-  upd.name = body.name;
+      if (body.name !== undefined)
+        upd.name = body.name;
 
-if (body.employeeId !== undefined)
-  upd.employeeId = body.employeeId.trim().toUpperCase();
+      if (body.username !== undefined) {
+        if (!body.username) {
+          return json({ error: 'Username is required' }, 400);
+        }
+        const cleanUsername = body.username.trim().toLowerCase();
+        
+        const existing = await db.collection('users').findOne({
+          username: cleanUsername,
+          id: { $ne: p1 }
+        });
+        if (existing) {
+          return json({ error: 'Username already exists' }, 400);
+        }
+        upd.username = cleanUsername;
+      }
 
-if (body.role !== undefined)
-  upd.role = body.role;
+      if (body.role !== undefined)
+        upd.role = body.role;
+
       await db.collection('users').updateOne({ id: p1, role: 'employee' }, { $set: upd });
       return json({ ok: true });
     }
@@ -343,34 +346,6 @@ if (body.role !== undefined)
       // Remove from rosters
       await db.collection('rosters').updateMany({}, { $pull: { employeeIds: p1 } });
       return json({ ok: true });
-    }
-    if (p0 === 'employees' && p1 && p2 === 'reset-password' && method === 'POST') {
-      if (me.role !== 'supervisor') return json({ error: 'Forbidden' }, 403);
-      const { newPassword, requestId } = body;
-      if (!newPassword || newPassword.length < 4) return json({ error: 'Password too short' }, 400);
-      await db.collection('users').updateOne({ id: p1 }, { $set: { password: hashPassword(newPassword) } });
-      if (requestId) {
-        await db.collection('password_requests').updateOne({ id: requestId }, { $set: { status: 'resolved', resolvedAt: new Date() } });
-      }
-      await notify(p1, 'Password Reset', 'Your password was reset by your supervisor.');
-      return json({ ok: true });
-    }
-
-    // ---------- PASSWORD REQUESTS ----------
-    if (p0 === 'password-requests' && method === 'GET') {
-      if (me.role !== 'supervisor') return json({ error: 'Forbidden' }, 403);
-      const reqs = await db.collection('password_requests').find({ status: 'pending' }).sort({ requestedAt: -1 }).toArray();
-      const emps = await db.collection('users').find({ id: { $in: reqs.map(r => r.employeeId) } }).toArray();
-      const empMap = Object.fromEntries(emps.map(e => [e.id, e]));
-      return json({
-        requests: reqs.map(r => ({
-  id: r.id,
-  userId: r.employeeId,
-  employeeId: empMap[r.employeeId]?.employeeId,
-  employeeName: empMap[r.employeeId]?.name || "Unknown",
-  requestedAt: r.requestedAt,
-})),
-      });
     }
 
     // ---------- ROSTERS ----------
@@ -395,7 +370,7 @@ if (body.role !== undefined)
         roster: {
           id: roster.id, areaId, date,
           employees: emps.map(e => ({
-            id: e.id, name: e.name, employeeId: e.employeeId, role: e.role,
+            id: e.id, name: e.name, username: e.username, role: e.role,
           })),
         },
       });
@@ -443,7 +418,7 @@ if (body.role !== undefined)
         const e = empMap[eid];
         if (!e) continue;
         rows.push({
-          id: e.id, name: e.name, employeeId: e.employeeId, role: e.role,
+          id: e.id, name: e.name, username: e.username, role: e.role,
           currentStatus: st.currentStatus, lunch: st.lunch, tea: st.tea,
           activeSession: st.activeSession ? {
             id: st.activeSession.id, type: st.activeSession.type, status: st.activeSession.status,
@@ -653,16 +628,16 @@ if (body.role !== undefined)
       const empMap = Object.fromEntries(emps.map(e => [e.id, e]));
       return json({
         records: sessions.map(s => ({
-    id: s.id,
-    employeeName: empMap[s.employeeId]?.name || 'Unknown',
-    employeeId: empMap[s.employeeId]?.employeeId || '',
-    type: s.type,
-    startAt: s.startAt,
-    endAt: s.endAt,
-    durationMin: s.durationMin,
-    durationSec: s.durationSec,
-    exceeded: s.durationMin > BREAK_DURATIONS[s.type],
-  })),
+          id: s.id,
+          employeeName: empMap[s.employeeId]?.name || 'Unknown',
+          username: empMap[s.employeeId]?.username || '',
+          type: s.type,
+          startAt: s.startAt,
+          endAt: s.endAt,
+          durationMin: s.durationMin,
+          durationSec: s.durationSec,
+          exceeded: s.durationMin > BREAK_DURATIONS[s.type],
+        })),
       });
     }
 

@@ -8,7 +8,7 @@ import { api } from '@/lib/shiftops-client';
 import { fx, getHaptics, setHaptics, getSounds, setSounds, ensureNotifPermission } from '@/lib/shiftops-fx';
 import {
   LayoutDashboard, CalendarDays, History, Settings as SettingsIcon,
-  Coffee, UtensilsCrossed, Check, X, Clock, ChevronRight, Plus, Trash2, Pencil, LogOut, KeyRound, ArrowLeft, ChevronLeft,
+  Coffee, UtensilsCrossed, Check, X, Clock, ChevronRight, Plus, Trash2, Pencil, LogOut, ArrowLeft, ChevronLeft,
   Bell, Vibrate, Volume2, Eraser,
 } from 'lucide-react';
 
@@ -264,7 +264,7 @@ function DashboardTab({ areaName }) {
                   <span className="text-[17px] font-semibold text-[#1D1D1F]">{e.name}</span>
                   <StatusPill status={e.currentStatus} />
                 </div>
-                <div className="text-[13px] text-[#8E8E93] mt-0.5">{e.employeeId} · {e.role}</div>
+                <div className="text-[13px] text-[#8E8E93] mt-0.5">{e.username} · {e.role}</div>
                 <div className="flex items-center gap-4 mt-2">
                   <BreakBadge type="lunch" info={e.lunch} now={now} />
                   <BreakBadge type="tea" info={e.tea} now={now} />
@@ -506,7 +506,7 @@ function RosterSheet({ date, areaId, onClose }) {
                 </div>
                 <div className="flex-1">
                   <div className="text-[16px] text-[#1D1D1F]">{e.name}</div>
-                  <div className="text-[13px] text-[#8E8E93]">{e.employeeId} · {e.role}</div>
+                  <div className="text-[13px] text-[#8E8E93]">{e.username} · {e.role}</div>
                 </div>
               </div>
             ))}
@@ -533,7 +533,7 @@ function HistoryTab({ areaId }) {
       if (!groups[key]) {
         groups[key] = {
           employeeName: r.employeeName,
-          employeeId: r.employeeId,
+          username: r.username,
           lunch: null,
           tea: null,
         };
@@ -690,7 +690,7 @@ function HistoryTab({ areaId }) {
     sheet.addRow([]);
     const headerRow = sheet.addRow([
       "Employee",
-      "Employee ID",
+      "Username",
       "Tea Duration",
       "Lunch Duration",
       "Lunch Start",
@@ -728,7 +728,7 @@ function HistoryTab({ areaId }) {
     groupedRecords.forEach((r, index) => {
       const row = sheet.addRow([
         r.employeeName,
-        r.employeeId,
+        r.username,
         r.tea
           ? (r.tea.durationSec != null
             ? `${Math.floor(r.tea.durationSec / 60)}m ${r.tea.durationSec % 60}s`
@@ -850,7 +850,7 @@ function HistoryTab({ areaId }) {
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-[16px] font-medium text-[#1D1D1F]">{r.employeeName}</div>
-                <div className="text-[13px] text-[#8E8E93]">{r.employeeId}</div>
+                <div className="text-[13px] text-[#8E8E93]">{r.username}</div>
               </div>
               <div className="mt-3 space-y-3">
 
@@ -905,7 +905,6 @@ function SettingsTab({ user, onLogout, refreshArea }) {
   const [settings, setSettings] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [areas, setAreas] = useState([]);
-  const [passReqs, setPassReqs] = useState([]);
   const [editingEmp, setEditingEmp] = useState(null);
   const [showAddEmp, setShowAddEmp] = useState(false);
   const [showAreas, setShowAreas] = useState(false);
@@ -915,10 +914,10 @@ function SettingsTab({ user, onLogout, refreshArea }) {
   useEffect(() => { setHap(getHaptics()); setSnd(getSounds()); }, []);
 
   const loadAll = async () => {
-    const [s, e, a, pr] = await Promise.all([
-      api('/settings'), api('/employees'), api('/areas'), api('/password-requests'),
+    const [s, e, a] = await Promise.all([
+      api('/settings'), api('/employees'), api('/areas'),
     ]);
-    setSettings(s.settings); setEmployees(e.employees); setAreas(a.areas); setPassReqs(pr.requests);
+    setSettings(s.settings); setEmployees(e.employees); setAreas(a.areas);
   };
   useEffect(() => { loadAll(); }, []);
 
@@ -954,7 +953,7 @@ function SettingsTab({ user, onLogout, refreshArea }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[16px] text-[#1D1D1F] truncate">{e.name}</div>
-              <div className="text-[13px] text-[#8E8E93] truncate">{e.employeeId}</div>
+              <div className="text-[13px] text-[#8E8E93] truncate">{e.username}</div>
             </div>
             <ChevronRight size={18} className="text-[#C7C7CC]" />
           </Row>
@@ -967,30 +966,7 @@ function SettingsTab({ user, onLogout, refreshArea }) {
         </Row>
       </Section>
 
-      {passReqs.length > 0 && (
-        <Section header={`Password Requests (${passReqs.length})`}>
-          {passReqs.map((r, i) => (
-            <div key={r.id} className="px-4 py-3.5" style={{ borderTop: i > 0 ? `1px solid ${C.sep}` : undefined }}>
-              <div className="text-[16px] text-[#1D1D1F]">{r.employeeName}</div>
-              <div className="text-[13px] text-[#8E8E93] mb-2">{r.employeeId}</div>
-              <button onClick={async () => {
-                const np = prompt(`Set new password for ${r.employeeName}:`);
-                if (!np) return;
-                try {
-                  await api(`/employees/${r.id}/reset-password`, {
-                    method: 'POST',
-                    body: {
-                      newPassword: np,
-                      requestId: r.id,
-                    },
-                  });
-                  await loadAll();
-                } catch (e) { alert(e.message); }
-              }} className="text-[15px] font-semibold text-[#007AFF]">Reset Password</button>
-            </div>
-          ))}
-        </Section>
-      )}
+
 
       <Section header="Areas">
         {areas.map((a, i) => (
@@ -1019,7 +995,6 @@ function SettingsTab({ user, onLogout, refreshArea }) {
         <ToggleRow label="Push Notifications" value={settings.pushNotifications ?? true} onChange={() => toggle('pushNotifications')} />
         <ToggleRow label="Break Reminders" value={settings.breakReminder ?? true} onChange={() => toggle('breakReminder')} />
         <ToggleRow label="Approval Notifications" value={settings.approvalNotifications ?? true} onChange={() => toggle('approvalNotifications')} />
-        <ToggleRow label="Password Requests" value={settings.passwordRequests ?? true} onChange={() => toggle('passwordRequests')} />
       </Section>
 
       <Section header="History">
@@ -1140,17 +1115,19 @@ function EmployeeEdit({ emp, onClose }) {
   const isNew = !emp;
   const [f, setF] = useState({
     name: emp?.name || '',
-    employeeId: emp?.employeeId || '',
+    username: emp?.username || '',
     role: emp?.role || 'employee',
-    password: '',
   });
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
+    if (!f.name || !f.username) {
+      alert('Name and Username are required');
+      return;
+    }
     setBusy(true);
     try {
       if (isNew) {
-        if (!f.password) { alert('Password required'); setBusy(false); return; }
         await api('/employees', { method: 'POST', body: f });
       } else {
         await api(`/employees/${emp.id}`, { method: 'PATCH', body: f });
@@ -1164,13 +1141,6 @@ function EmployeeEdit({ emp, onClose }) {
     if (!confirm(`Delete ${emp.name}? This cannot be undone.`)) return;
     await api(`/employees/${emp.id}`, { method: 'DELETE' });
     onClose();
-  };
-
-  const resetPw = async () => {
-    const np = prompt('New password:');
-    if (!np) return;
-    await api(`/employees/${emp.id}/reset-password`, { method: 'POST', body: { newPassword: np } });
-    alert('Password reset.');
   };
 
   return (
@@ -1190,24 +1160,15 @@ function EmployeeEdit({ emp, onClose }) {
             />
 
             <Field
-              label="Employee ID"
-              value={f.employeeId}
+              label="Username"
+              value={f.username}
               onChange={(v) =>
                 setF({
                   ...f,
-                  employeeId: v.toUpperCase(),
+                  username: v,
                 })
               }
             />
-
-            {isNew && (
-              <Field
-                label="Password"
-                type="password"
-                value={f.password}
-                onChange={(v) => setF({ ...f, password: v })}
-              />
-            )}
           </FieldGroup>
           <FieldGroup>
             <div className="px-4 py-3 flex items-center gap-3 border-t">
@@ -1232,9 +1193,6 @@ function EmployeeEdit({ emp, onClose }) {
           </FieldGroup>
           {!isNew && (
             <>
-              <button onClick={resetPw} className="w-full bg-white border rounded-2xl py-3 text-[16px] font-medium text-[#007AFF] flex items-center justify-center gap-2" style={{ borderColor: C.sep }}>
-                <KeyRound size={16} /> Reset Password
-              </button>
               <button onClick={remove} className="w-full bg-white rounded-2xl py-3 text-[16px] font-medium text-[#FF3B30] flex items-center justify-center gap-2">
                 <Trash2 size={16} /> Delete Employee
               </button>

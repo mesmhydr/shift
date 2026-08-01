@@ -5,11 +5,9 @@ import { api, setToken } from '@/lib/shiftops-client';
 import { fx, ensureNotifPermission } from '@/lib/shiftops-fx';
 
 export default function Login({ onLogin }) {
-  const [employeeId, setEmployeeId] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showReset, setShowReset] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -19,7 +17,7 @@ export default function Login({ onLogin }) {
     try {
       const { token } = await api('/auth/login', {
         method: 'POST',
-        body: { employeeId: employeeId.trim().toUpperCase(), password },
+        body: { username: username.trim().toLowerCase() },
       });
       setToken(token);
       fx.success();
@@ -49,25 +47,14 @@ export default function Login({ onLogin }) {
         </div>
 
         <form onSubmit={submit} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-            <input
-              type="text"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value.toUpperCase())}
-              placeholder="Employee ID"
-              className="w-full bg-transparent outline-none text-[17px] text-[#1D1D1F] placeholder:text-[#8E8E93]"
-              autoComplete="username"
-              required
-            />
-          </div>
           <div className="px-4 py-3">
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
               className="w-full bg-transparent outline-none text-[17px] text-[#1D1D1F] placeholder:text-[#8E8E93]"
-              autoComplete="current-password"
+              autoComplete="username"
               required
             />
           </div>
@@ -85,21 +72,8 @@ export default function Login({ onLogin }) {
         >
           {loading ? 'Signing in…' : 'Sign In'}
         </button>
-
-        <button
-          type="button"
-          onClick={() => setShowReset(!showReset)}
-          className="w-full mt-3 text-[15px] text-[#007AFF] text-center"
-        >
-          Forgot Password?
-        </button>
-
-        {showReset && (
-          <div className="mt-4 p-4 bg-white rounded-2xl text-[14px] text-[#8E8E93] leading-relaxed">
-            Contact your supervisor to reset your password. Or sign in and request a reset from your profile.
-          </div>
-        )}
       </div>
     </div>
   );
 }
+
